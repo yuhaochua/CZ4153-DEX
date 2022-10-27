@@ -17,54 +17,69 @@ contract Token is ERC20 {
 }
 
 contract Dex {
-    mapping (address => uint) private balances;
-    mapping (uint => address) private availableTokens;
-    uint256 private numTokens=0;
+    mapping (address => ERC20) private availableTokens;
+    address[] private tokenAddresses;
+    uint256 private numTokens;
 
     address public owner;
-    event LogDepositMade(address accountAddress, uint amount);
+    event LogTokenSent(address token, address receipient, uint256 amount);
     event LogTokenCreated(address tokenAddress, string tokenName, string tokenSymbol);
 
     constructor () {
         owner = msg.sender;
-        availableTokens[0] = address(0);
+        numTokens = 0;
     }
 
 
     // Allows admin to create new token, and new token will be added into availableTokens dict.
     function createToken(string memory _name, string memory _symbol) public {
         // only allow owner to create tokens
-        // require(owner == msg.sender, "Only the owner can create tokens!");
+        require(owner == msg.sender, "Only the owner can create tokens!");
 
         //mapping address of new Token created
         address newTokenAddress = address(new Token(_name, _symbol));
-        availableTokens[numTokens] = newTokenAddress;
+        availableTokens[newTokenAddress] = ERC20(newTokenAddress);
+        tokenAddresses.push(newTokenAddress);
         numTokens++;
 
         // log token creation event
         emit LogTokenCreated(newTokenAddress, _name, _symbol);
     }
 
+    // Allows admin to send token
+    function sendToken(address _token, address _receipient, uint256 _amount) public {
+        // only allow owner to create tokens
+        require(owner == msg.sender, "Only the owner can send tokens!");
+        ERC20 ERC20TOKEN = availableTokens[_token];
+        ERC20TOKEN.transfer(_receipient, _amount);
+
+        // log token sent event
+        emit LogTokenSent(_token, _receipient, _amount);
+    }
+
     // Returns an array of available tokens
-    function getAvailableTokens() public view returns(address[] memory){
+    function getAvailableTokens() public view returns(address[] memory) {
         address[] memory addressTemp = new address[](numTokens);
 
         //loop through the available tokens
         for (uint256 i=0; i < numTokens; i++) {
-            addressTemp[i] = availableTokens[i];
+            if(tokenAddresses[i] == address(0)){
+                i--; //so that i does not increase
+                continue;
+            }
+            addressTemp[i] = tokenAddresses[i];
         }
         return addressTemp;
     }
 
+    function getTokenName(address _token) public view returns(string memory) {
+        ERC20 ERC20TOKEN = availableTokens[_token];
+        return ERC20TOKEN.name();
+    }
 
-    function withdraw(uint withdrawAmount) public returns (uint remainingBal) {
-        require(withdrawAmount <= balances[msg.sender]);
-
-        balances[msg.sender] -= withdrawAmount;
-
-        payable(msg.sender).transfer(withdrawAmount);
-
-        return balances[msg.sender];
+    function getTokenBalance(address _token) public view returns(uint256) {
+        ERC20 ERC20TOKEN = availableTokens[_token];
+        return ERC20TOKEN.balanceOf(msg.sender);
     }
 }
 
