@@ -7,16 +7,21 @@ import SellOrder from './components/sellOrder';
 // import Transfer from './components/Transfer';
 import Web3 from 'web3';
 import AvailableTokens from './components/AvailableTokens';
-import IssueToken from './components/IssueToken';
-import { createToken, retrieveTokens } from './Dex.js';
+import IssueToken from './components/CreateToken';
+import { retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
+import DropDownOption from './components/DropDownOption';
 
 function App() {
-  const transactionTypes = ['ethToToken', 'tokenToEth']
   const [address, setAddress] = useState('-')
   const [ethBalance, setEthBalance] = useState('-')
   const [isDisconnected, setIsDisconnected] = useState(true)
   const [returningUser, setReturningUser] = useState(false)
   const [tokens, setTokens] = useState(null)
+  const [tokenAddressPairs, setTokenAddressPairs] = useState([])
+  const [receipient, setReceipient] = useState('') 
+  const [amount, setAmount] = useState('')
+  const [token, setToken] = useState('') 
+  const admin = '0x2666eB9Eff46A404B1C875B23E1b5705855f866B' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -56,7 +61,6 @@ function App() {
     }
 
 
-
     setAddress(account[0])
     setEthBalance(balance)
     // setAddress('0x8934598')
@@ -71,6 +75,35 @@ function App() {
     setAddress('-')
     setEthBalance('-')
   }
+
+  const handleSendToken = async(e) => {
+    e.preventDefault()
+    console.log("receipient:",receipient)
+    console.log("amount:",amount)
+    console.log("token:", token)
+    await sendToken(token, receipient, amount, address)
+  }
+
+  const showAdminForms = () => {
+    return <div className='col-8 row'>
+      <div className="col-6">
+            <IssueToken addr={address} key={address}/>
+          </div>
+          <div className="col-6">
+              <h1>Issue Token</h1>
+              <label htmlFor="tokens">Choose a token</label>
+              <select id="tokens" onChange={(e) => setToken(e.target.value)}>
+                  {tokenAddressPairs && tokenAddressPairs.map(pair => (
+                      <DropDownOption pair={pair} key={pair.address}/>
+                  ))}
+              </select>
+
+              <input className='row mt-3' type="text" placeholder='Receipient' onLoad={(e) => setReceipient(e.target.value)} onChange={(e) => setReceipient(e.target.value)}/>
+              <input className='row mt-3' type="text" placeholder='Amount' onChange={(e) => setAmount(e.target.value)}/>
+              <input type="button" className='btn btn-primary mt-3' value='Issue Token' onClick={handleSendToken}/> 
+          </div>
+    </div>
+  }
   
   useEffect(() => {
     window.ethereum.request({ method: 'eth_accounts' }).then((result) => {
@@ -79,14 +112,34 @@ function App() {
       }
     })
 
-
     const fetchTokens = async () => {
-      const result = retrieveTokens();
-      setTokens(result.tokens);
-      console.log(result.tokens);
+      await retrieveTokens().then((result) => {
+        console.log(result)
+        setTokens(result.tokens)
+        updateTokenAddressPairs()
+      })
     }
     fetchTokens()
-  }, [])
+
+    const updateTokenAddressPairs = () => {
+      let tokenName
+      const tempPairs = []
+      tokens && tokens.map(token => {
+        retrieveTokenName(token).then((result) => {
+          tokenName=result
+          const obj = {
+            name: tokenName,
+            address: token
+          }
+          tempPairs.push(obj)
+          console.log("length of temp", tempPairs.length)
+          console.log("temp is ", tempPairs)
+          setTokenAddressPairs(tempPairs) //update using this method so that component re renders
+        })
+      })
+    }
+
+  }, [address])
 
   return (
     <div className="App">
@@ -97,9 +150,7 @@ function App() {
           <input type="button" className='btn btn-danger' value='Disconnect Wallet' disabled={isDisconnected} onClick={disconnectWallet} />
 
         </div>
-        {/* {transactionTypes.map(transactionType => (
-          <Transfer transactionType={transactionType} key={transactionType} />
-        ))}         */}
+
         <div className="mt-5 row">
           <div className="col-4">
             <BuyOrder />
@@ -113,11 +164,12 @@ function App() {
         </div>
         <div className="row mt-5">
           <div className="col-4">
-            <AvailableTokens />
+            <h1>Your Tokens</h1>
+            {address !== '-' && tokens && tokens.map(token => (
+              <AvailableTokens token={token} addr={address} key={token}/>
+            ))}
           </div>
-          <div className="col-4">
-            <IssueToken />
-          </div>
+          {address == admin && showAdminForms()}
         </div>
       </div>
     </div>
