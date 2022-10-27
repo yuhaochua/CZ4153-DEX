@@ -1,0 +1,21 @@
+.navbar {
+    background-color: #282c34;
+    display: flex;
+    font-size: 10px;
+    color: white;
+}
+
+.dex-name {
+    align-items: left;
+    padding-left: 50px;
+}
+
+.address-n-ether {
+    margin-right: 100px;
+    font-size: x-large;
+}
+
+.etherLogo {
+    /* margin-top: 5px; */
+    height: 40px;
+}
