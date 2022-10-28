@@ -93,6 +93,7 @@ function App() {
               <h1>Issue Token</h1>
               <label htmlFor="tokens">Choose a token</label>
               <select id="tokens" onChange={(e) => setToken(e.target.value)}>
+                  <option value=""></option>
                   {tokenAddressPairs && tokenAddressPairs.map(pair => (
                       <DropDownOption pair={pair} key={pair.address}/>
                   ))}
@@ -152,10 +153,10 @@ function App() {
 
         <div className="mt-5 row">
           <div className="col-4">
-            <BuyOrder />
+            <BuyOrder tokenAddressPairs={tokenAddressPairs}/>
           </div>
           <div className="col-4">
-            <SellOrder />
+            <SellOrder tokenAddressPairs={tokenAddressPairs}/>
           </div>
           <div className="col-4">
             <Orders />
