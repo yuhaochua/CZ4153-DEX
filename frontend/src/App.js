@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useLayoutEffect } from 'react';
 import './App.css';
 import BuyOrder from './components/buyOrder';
 import Navbar from "./components/Navbar"
@@ -16,7 +16,7 @@ function App() {
   const [ethBalance, setEthBalance] = useState('-')
   const [isDisconnected, setIsDisconnected] = useState(true)
   const [returningUser, setReturningUser] = useState(false)
-  const [tokens, setTokens] = useState(null)
+  const [tokens, setTokens] = useState([])
   const [tokenAddressPairs, setTokenAddressPairs] = useState([])
   const [receipient, setReceipient] = useState('') 
   const [amount, setAmount] = useState('')
@@ -114,13 +114,14 @@ function App() {
 
     const fetchTokens = async () => {
       await retrieveTokens().then((result) => {
-        console.log(result)
         setTokens(result.tokens)
-        updateTokenAddressPairs()
       })
     }
     fetchTokens()
 
+  }, [address])
+
+  useLayoutEffect(() => {
     const updateTokenAddressPairs = () => {
       let tokenName
       const tempPairs = []
@@ -132,14 +133,12 @@ function App() {
             address: token
           }
           tempPairs.push(obj)
-          console.log("length of temp", tempPairs.length)
-          console.log("temp is ", tempPairs)
           setTokenAddressPairs(tempPairs) //update using this method so that component re renders
         })
       })
     }
-
-  }, [address])
+    updateTokenAddressPairs()
+  }, [tokens.length])
 
   return (
     <div className="App">
@@ -169,7 +168,7 @@ function App() {
               <AvailableTokens token={token} addr={address} key={token}/>
             ))}
           </div>
-          {address == admin && showAdminForms()}
+          {address === admin && showAdminForms()}
         </div>
       </div>
     </div>
