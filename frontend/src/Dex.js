@@ -8,7 +8,7 @@ import artifact from "./truffleProj/build/contracts/Dex.json";
 const myAddress = "0xcc6b9a2Ef844002c413d992B980EeB7b08899A10"; // PLEASE CHANGE IT TO YOURS
 const ganacheWSS = 'ws://127.0.0.1:7545'; // PLEASE CHANGE IT TO YOURS
 
-export const DexContractAddress = "0x240D3c56c532Fdc741bFFd676cBBF7D08e6f6521"; // PLEASE CHANGE IT TO YOURS
+export const DexContractAddress = "0x9526F890A6c7CDbb1f8f7EbA6047BFa921B418c8"; // PLEASE CHANGE IT TO YOURS
 export const Testnet = "goerli"; // PLEASE CHANGE IT TO YOURS
 
 const web3 = new Web3(window.ethereum);
@@ -49,4 +49,46 @@ export const retrieveTokenBalance = async (_name, _addr) => {
     // console.log("token name",name);
     return balance;
 };
+
+export const placeBuyOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _addr) => {
+    // only need the approve function from ERC20
+    let minABI = [
+        // approve
+        {
+            "constant": false,
+            "inputs": [
+                {
+                    "name": "_spender",
+                    "type": "address"
+                },
+                {
+                    "name": "_value",
+                    "type": "uint256"
+                }
+            ],
+            "name": "approve",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bool"
+                }
+            ],
+            "payable": false,
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }
+    ];
+
+    // expecting result to be (orderbookaddress, token1 address, token2 address)
+    let result = await contract.methods.getOrderbookAddress(_buyToken, _payToken).call();
+    console.log("orderbook address: ", result[0]);
+    if(result[0] === '0x0000000000000000000000000000000000000000') {
+        result = await contract.methods.addTokenPair(_buyToken, _payToken).send({from: _addr});
+    }
+
+    let _payTokenContract = new web3.eth.Contract(minABI, _payToken);
+    await _payTokenContract.methods.approve(result[0], _payAmt).send({from: _addr});
+    
+    await contract.methods.buy(_buyToken, _buyAmt, _payToken, _payAmt).send({from: _addr});
+}
 

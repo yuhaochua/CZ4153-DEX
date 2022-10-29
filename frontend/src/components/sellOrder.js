@@ -1,4 +1,4 @@
-const SellOrder= ({tokenAddressPairs}) => {
+const SellOrder= ({tokenAddressPairs, addr}) => {
     return (
         <>
             <h1>Sell Order</h1>

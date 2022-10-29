@@ -12,16 +12,16 @@ import { retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
 import DropDownOption from './components/DropDownOption';
 
 function App() {
-  const [address, setAddress] = useState('-')
-  const [ethBalance, setEthBalance] = useState('-')
-  const [isDisconnected, setIsDisconnected] = useState(true)
-  const [returningUser, setReturningUser] = useState(false)
-  const [tokens, setTokens] = useState([])
-  const [tokenAddressPairs, setTokenAddressPairs] = useState([])
-  const [receipient, setReceipient] = useState('') 
-  const [amount, setAmount] = useState('')
-  const [token, setToken] = useState('') 
-  const admin = '0x2666eB9Eff46A404B1C875B23E1b5705855f866B' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const [address, setAddress] = useState('-') // wallet address of current user
+  const [ethBalance, setEthBalance] = useState('-') // eth balance of current user
+  const [isDisconnected, setIsDisconnected] = useState(true) // user wallet disconnected
+  const [returningUser, setReturningUser] = useState(false) // used to bring up metamask when reconnecting
+  const [tokens, setTokens] = useState([]) // available tokens in system
+  const [tokenAddressPairs, setTokenAddressPairs] = useState([]) // mapping between tokens and their addresses
+  const [receipient, setReceipient] = useState('')  // receipient to issue token to
+  const [amount, setAmount] = useState('') // amount of token to issue
+  const [token, setToken] = useState('')  // type of token to issue
+  const admin = '0xd9218CDC9c48198c033AbC6Ccf50eFC4Da82e7bf' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -82,6 +82,10 @@ function App() {
     console.log("amount:",amount)
     console.log("token:", token)
     await sendToken(token, receipient, amount, address)
+  }
+
+  const handleRefresh = async() => {
+
   }
 
   const showAdminForms = () => {
@@ -153,10 +157,10 @@ function App() {
 
         <div className="mt-5 row">
           <div className="col-4">
-            <BuyOrder tokenAddressPairs={tokenAddressPairs}/>
+            <BuyOrder tokenAddressPairs={tokenAddressPairs} addr={address}/>
           </div>
           <div className="col-4">
-            <SellOrder tokenAddressPairs={tokenAddressPairs}/>
+            <SellOrder tokenAddressPairs={tokenAddressPairs} addr={address}/>
           </div>
           <div className="col-4">
             <Orders />

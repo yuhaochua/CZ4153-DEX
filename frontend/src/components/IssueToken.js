@@ -9,7 +9,7 @@ const IssueToken= ({ tokenAddressPairs }) => {
     const handleSendToken = async(e) => {
         e.preventDefault()
         console.log(receipient, amount, token)
-        // await sendToken(token, receipient, amount)
+        await sendToken(token, receipient, amount)
     }
 
 
