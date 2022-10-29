@@ -8,7 +8,7 @@ import SellOrder from './components/sellOrder';
 import Web3 from 'web3';
 import AvailableTokens from './components/AvailableTokens';
 import CreateToken from './components/CreateToken';
-import { retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
+import { retrieveOrders, retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
 import DropDownOption from './components/DropDownOption';
 // import IssueToken from './components/IssueToken';
 
@@ -18,12 +18,13 @@ function App() {
   const [isDisconnected, setIsDisconnected] = useState(true) // user wallet disconnected
   const [returningUser, setReturningUser] = useState(false) // used to bring up metamask when reconnecting
   const [tokens, setTokens] = useState([]) // available tokens in system
+  const [orders, setOrders] = useState([]) // orders placed
   const [tokenAddressPairs, setTokenAddressPairs] = useState([]) // mapping between tokens and their addresses
   const [receipient, setReceipient] = useState('')  // receipient to issue token to
   const [amount, setAmount] = useState('') // amount of token to issue
   const [token, setToken] = useState('')  // type of token to issue
   const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
-  const admin = '0xd9218CDC9c48198c033AbC6Ccf50eFC4Da82e7bf' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const admin = '0xFf64623594fa02a2a32b0441C9B99B72E2F7dd50' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -126,6 +127,13 @@ function App() {
       })
     }
     fetchTokens()
+
+    const fetchOrders = async () => {
+      await retrieveOrders().then((result) => {
+        console.log("order results", result)
+      })
+    }
+    fetchOrders()
 
   }, [address, refresh])
 

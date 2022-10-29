@@ -20,7 +20,9 @@ contract Dex {
     mapping (address => ERC20) private availableTokens;
     address[] private tokenAddresses;
     uint256 private numTokens;
+    uint256 private numOrders;
     OrderbookFactory private books = new OrderbookFactory();
+    bytes32[] private identifiers;
 
     address public owner;
     event LogTokenSent(address token, address receipient, uint256 amount);
@@ -30,6 +32,7 @@ contract Dex {
     constructor () {
         owner = msg.sender;
         numTokens = 0;
+        numOrders = 0;
     }
 
 
@@ -102,6 +105,7 @@ contract Dex {
         // if no existing orderbook for this pair of tokens then create it
         if(books.orderbooks(identifier) == address(0)){
             books.addPair(token1, token2);
+            identifiers.push(identifier);
         }
         Orderbook book = Orderbook(books.orderbooks(identifier));
         // in orderbook token 1 acts as cash, token 2 acts as commodity.
@@ -115,6 +119,7 @@ contract Dex {
             book.placeBuy(_payAmt, _buyAmt, msg.sender);
         }
 
+        numOrders++;
         emit LogBuyOrderPlaced(msg.sender, _buyToken, _buyAmt, _payToken, _payAmt);
     }
 
@@ -146,24 +151,44 @@ contract Dex {
             token2 = _token1;
         }
         bytes32 identifier = keccak256(abi.encodePacked(token1, token2));
+        identifiers.push(identifier);
         return (books.orderbooks(identifier), token1, token2);
     }
 
-    function getBuyOrders(address _token1, address _token2) view external returns (address[] memory, uint256[] memory, uint256[] memory){
-        address token1;
-        address token2;
-        if (uint160(_token1) > uint160(_token2)) {
-            token1 = _token1;
-            token2 = _token2;
-        } else {
-            token1 = _token2;
-            token2 = _token1;
-        }
-        bytes32 identifier = keccak256(abi.encodePacked(token1, token2));
-        require(books.orderbooks(identifier) != address(0), "orderbook doesnt exist!");
+    function getBuyOrders() view external returns (address[] memory, uint256[] memory, uint256[] memory){
+        // address token1;
+        // address token2;
+        // if (uint160(_token1) > uint160(_token2)) {
+        //     token1 = _token1;
+        //     token2 = _token2;
+        // } else {
+        //     token1 = _token2;
+        //     token2 = _token1;
+        // }
+        // bytes32 identifier = keccak256(abi.encodePacked(token1, token2));
+        // require(books.orderbooks(identifier) != address(0), "orderbook doesnt exist!");
 
-        Orderbook book = Orderbook(books.orderbooks(identifier));
-        return book.getBuySide();
+        address[] memory addressTemp;
+        uint256[] memory priceTemp;
+        uint256[] memory quantityTemp;
+
+        address[] memory retaddressTemp = new address[](numOrders);
+        uint256[] memory retpriceTemp = new uint256[](numOrders);
+        uint256[] memory retquantityTemp = new uint256[](numOrders);
+        uint256 k = 0;
+        //loop through the available tokens
+        for(uint256 i=0; i < identifiers.length; i++) {
+            Orderbook book = Orderbook(books.orderbooks(identifiers[i]));
+            (addressTemp, priceTemp, quantityTemp) = book.getBuySide();
+            
+            for(uint256 j=0; j < addressTemp.length; j++){
+                retaddressTemp[k] = (addressTemp[j]);
+                retpriceTemp[k] = (priceTemp[j]);
+                retquantityTemp[k] = (quantityTemp[j]);
+                k++;
+            }
+        }
+        return (retaddressTemp, retpriceTemp, retquantityTemp);
     }
 
 
