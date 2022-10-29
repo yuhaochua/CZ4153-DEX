@@ -21,7 +21,7 @@ function App() {
   const [receipient, setReceipient] = useState('') 
   const [amount, setAmount] = useState('')
   const [token, setToken] = useState('') 
-  const admin = '0x2666eB9Eff46A404B1C875B23E1b5705855f866B' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const admin = '0xDC6eFe51504Ad214dD8897027F7B06C6619a261b' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {

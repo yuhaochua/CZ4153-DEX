@@ -8,7 +8,7 @@ import artifact from "./truffleProj/build/contracts/Dex.json";
 const myAddress = "0xcc6b9a2Ef844002c413d992B980EeB7b08899A10"; // PLEASE CHANGE IT TO YOURS
 const ganacheWSS = 'ws://127.0.0.1:7545'; // PLEASE CHANGE IT TO YOURS
 
-export const DexContractAddress = "0x240D3c56c532Fdc741bFFd676cBBF7D08e6f6521"; // PLEASE CHANGE IT TO YOURS
+export const DexContractAddress = "0xB73851ecaabb61a19491c6931E0c5F62698eB822"; // PLEASE CHANGE IT TO YOURS
 export const Testnet = "goerli"; // PLEASE CHANGE IT TO YOURS
 
 const web3 = new Web3(window.ethereum);

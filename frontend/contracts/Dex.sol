@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 import "../node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -16,7 +17,7 @@ contract OrderbookFactory {
         bytes32 orderbookID = keccak256(abi.encodePacked(token1, token2)); // Compute orderbookID from  the hash of the ordered address
         require(orderbooks[orderbookID] == address(0), "Token pair already exists"); 
 
-        orderbooks[orderbookID] = adress(new Orderbook(token1, token2)); // Instantiate new Orderbook contract
+        orderbooks[orderbookID] = address(new Orderbook(token1, token2)); // Instantiate new Orderbook contract
         emit newPair(token1, token2);
     }
 }
@@ -29,8 +30,8 @@ contract Orderbook{
     struct Order{
         uint256 price;
         uint256 quantity;
-        uint256 unitPrice;
         uint256 date;
+        uint256 unitPrice;
     }
 
     mapping(address => Order) buyOrders; //Maps Buy Orders
@@ -53,16 +54,18 @@ contract Orderbook{
         address indexed buyer
     );
     event SellOrderPlaced(
-        uint256 indexed unitPice,
+        uint256 indexed unitPrice,
         uint256 price,
-        uint256 quantity
+        uint256 quantity,
         address indexed seller
     );
 
     /* Constructor
        =========================================
     */
-    constructor(address token1, address token2){
+    constructor(address _token1, address _token2){
+        token1 = IERC20(_token1);
+        token2 = IERC20(_token2);
         nextBuy[BUFFER] = BUFFER;
         nextSell[BUFFER] = BUFFER;
     }
@@ -94,13 +97,14 @@ contract Orderbook{
             prev = nextBuy[prev];
         }
     }
-    function _verifyIndexSell(
-        address prev,
-        uint256 unitPrice,
-        address next
-    ) internal view returns (bool) {
-        return ((prev == BUFFER || unitPrice >= sellOrders[prev].unitPrice) &&
-            (next == BUFFER || unitPrice < sellOrders[next].unitPrice));
+    function _findPrevSell(uint256 unitPrice) internal view returns (address) {
+        address prev = BUFFER;
+        while (true) {
+            if (_verifyIndexSell(prev, unitPrice, nextSell[prev])) {
+                return prev;
+            }
+            prev = nextSell[prev];
+        }
     }
 
     function _getPrevious(address target) internal view returns (address) {
@@ -197,9 +201,9 @@ contract Orderbook{
         emit CancelSellOrder(msg.sender); // Emit a cencel sell order event
     }
 
-    /* Returns the buy side of the orderbook in three separate arrays. The first
-     * array contains all the addresses with active buy orders, and the second
-     * and third arrays contain the associated prices and quantities of these
+    /* Returns the buy side of the orderbook in four separate arrays. The first
+     * array contains all the addresses with active buy orders, and second, third
+     * and fourth arrays contain the associated unitPrices, prices and quantities of these
      * buy orders respectively. Arrays are returned in descending order
      */
     function getBuySide()
@@ -212,7 +216,7 @@ contract Orderbook{
             uint256[] memory
         )
     {
-        // Instantiate three arrays equal in length to the total buy count
+        // Instantiate four arrays equal in length to the total buy count
         address[] memory addressTemp = new address[](buyCount);
         uint256[] memory unitPriceTemp = new uint256[](buyCount);
         uint256[] memory priceTemp = new uint256[](buyCount);
@@ -237,9 +241,9 @@ contract Orderbook{
         return (addressTemp, unitPriceTemp, priceTemp, quantityTemp);
     }
 
-    /* Returns the sell side of the orderbook in three separate arrays. The first
-     * array contains all the addresses with active sell orders, and the second
-     * and third arrays contain the associated prices and quantities of these
+    /* Returns the sell side of the orderbook in four separate arrays. The first
+     * array contains all the addresses with active sell orders, and the second, third
+     * and fourth arrays contain the associated unitPrices, prices and quantities of these
      * sell orders respectively. Arrays are returned in ascending order
      */
     function getSellSide()
@@ -252,7 +256,7 @@ contract Orderbook{
             uint256[] memory
         )
     {
-        // Instantiate three arrays equal in length to the total sell count
+        // Instantiate four arrays equal in length to the total sell count
         address[] memory addressTemp = new address[](sellCount);
         uint256[] memory unitPriceTemp = new uint256[](sellCount);
         uint256[] memory priceTemp = new uint256[](sellCount);
@@ -273,7 +277,7 @@ contract Orderbook{
             current = nextSell[current];
         }
 
-        // Return the three arrays
+        // Return the four arrays
         return (addressTemp, unitPriceTemp, priceTemp, quantityTemp);
     }
 }
