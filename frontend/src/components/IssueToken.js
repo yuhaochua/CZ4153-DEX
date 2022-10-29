@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { sendToken } from '../Dex.js';
 
-const IssueToken= ({ tokenAddressPairs }) => {
+const IssueToken= ({ tokenAddressPairs, addr,refreshHandler }) => {
     const [receipient, setReceipient] = useState('') 
     const [amount, setAmount] = useState('')
     const [token, setToken] = useState('')
@@ -9,19 +9,20 @@ const IssueToken= ({ tokenAddressPairs }) => {
     const handleSendToken = async(e) => {
         e.preventDefault()
         console.log(receipient, amount, token)
-        await sendToken(token, receipient, amount)
+        await sendToken(token, receipient, amount, addr)
+        refreshHandler()
     }
 
 
     return (
-        <div>
+        <div className="col-6"> 
             <h1>Issue Token</h1>
             <label htmlFor="tokens">Choose a token</label>
             <select id="tokens" onChange={(e) => setToken(e.target.value)}>
-                {/* <option></option> */}
+                <option></option>
                 {tokenAddressPairs && tokenAddressPairs.map(pair => (
                     // <DropDownOption pair={pair} key={pair.address}/>
-                    <option value={pair.address}>{pair.name}</option>
+                    <option value={pair.address} key={pair.address}>{pair.name}</option>
                 ))}
             </select>
 

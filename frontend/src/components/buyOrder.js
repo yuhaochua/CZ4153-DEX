@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { placeBuyOrder } from "../Dex";
 
-const BuyOrder= ({tokenAddressPairs, addr}) => {
+const BuyOrder= ({tokenAddressPairs, addr, refreshHandler}) => {
     const [buyToken, setBuyToken] = useState('')
     const [payToken, setPayToken] = useState('')
     const [buyAmt, setBuyAmt] = useState('')
@@ -10,6 +10,7 @@ const BuyOrder= ({tokenAddressPairs, addr}) => {
     const handleBuy = async(e) => {
         e.preventDefault()
         await placeBuyOrder(buyToken, buyAmt, payToken, payAmt, addr)
+        refreshHandler()
     }
 
     return (

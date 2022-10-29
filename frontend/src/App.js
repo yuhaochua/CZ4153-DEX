@@ -7,9 +7,10 @@ import SellOrder from './components/sellOrder';
 // import Transfer from './components/Transfer';
 import Web3 from 'web3';
 import AvailableTokens from './components/AvailableTokens';
-import IssueToken from './components/CreateToken';
+import CreateToken from './components/CreateToken';
 import { retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
 import DropDownOption from './components/DropDownOption';
+// import IssueToken from './components/IssueToken';
 
 function App() {
   const [address, setAddress] = useState('-') // wallet address of current user
@@ -21,6 +22,7 @@ function App() {
   const [receipient, setReceipient] = useState('')  // receipient to issue token to
   const [amount, setAmount] = useState('') // amount of token to issue
   const [token, setToken] = useState('')  // type of token to issue
+  const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
   const admin = '0xd9218CDC9c48198c033AbC6Ccf50eFC4Da82e7bf' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
@@ -77,21 +79,21 @@ function App() {
   }
 
   const handleSendToken = async(e) => {
-    e.preventDefault()
     console.log("receipient:",receipient)
     console.log("amount:",amount)
     console.log("token:", token)
     await sendToken(token, receipient, amount, address)
+    setRefresh(!refresh)
   }
 
   const handleRefresh = async() => {
-
+    setRefresh(!refresh) // flipping this boolean will cause refresh state to change, and refresh the content of the page
   }
 
   const showAdminForms = () => {
     return <div className='col-8 row'>
       <div className="col-6">
-            <IssueToken addr={address} key={address}/>
+            <CreateToken addr={address} refreshHandler={handleRefresh} key={address}/>
           </div>
           <div className="col-6">
               <h1>Issue Token</h1>
@@ -107,6 +109,7 @@ function App() {
               <input className='row mt-3' type="text" placeholder='Amount' onChange={(e) => setAmount(e.target.value)}/>
               <input type="button" className='btn btn-primary mt-3' value='Issue Token' onClick={handleSendToken}/> 
           </div>
+          {/* <IssueToken tokenAddressPairs={tokenAddressPairs} addr={address} refreshHandler={handleRefresh} /> */}
     </div>
   }
   
@@ -124,7 +127,7 @@ function App() {
     }
     fetchTokens()
 
-  }, [address])
+  }, [address, refresh])
 
   useLayoutEffect(() => {
     const updateTokenAddressPairs = () => {
@@ -157,10 +160,10 @@ function App() {
 
         <div className="mt-5 row">
           <div className="col-4">
-            <BuyOrder tokenAddressPairs={tokenAddressPairs} addr={address}/>
+            <BuyOrder tokenAddressPairs={tokenAddressPairs} refreshHandler={handleRefresh} addr={address}/>
           </div>
           <div className="col-4">
-            <SellOrder tokenAddressPairs={tokenAddressPairs} addr={address}/>
+            <SellOrder tokenAddressPairs={tokenAddressPairs} refreshHandler={handleRefresh} addr={address}/>
           </div>
           <div className="col-4">
             <Orders />
@@ -170,7 +173,7 @@ function App() {
           <div className="col-4">
             <h1>Your Tokens</h1>
             {address !== '-' && tokens && tokens.map(token => (
-              <AvailableTokens token={token} addr={address} key={token}/>
+              <AvailableTokens refresh={refresh} token={token} addr={address} key={token}/>
             ))}
           </div>
           {address === admin && showAdminForms()}
