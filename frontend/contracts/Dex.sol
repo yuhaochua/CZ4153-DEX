@@ -21,7 +21,6 @@ contract OrderbookFactory {
         emit newPair(token1, token2);
     }
 }
-
 contract Orderbook{
     string name; //token2/token1
     IERC20 token1;
@@ -149,51 +148,68 @@ contract Orderbook{
         uint256 k = matchOrders(buyAddress, sellAddress, true);
         //Buy & Sell Orders exactly fulfill each other
         if (k == 1){
-            completeBuyOrder(buyAddress,sellAddress);
-            completeSellOrder(buyAddress,sellAddress);
+            completeBuyOrder(buyAddress,sellAddress,k);
+            completeSellOrder(buyAddress,sellAddress,k);
         }
         //Sell order is partially fulfilled
         else if (k == 2){
-            //completeBuyOrder();
-            //completeSellOrder();
-            //placeSell();
+            completeBuyOrder(buyAddress,sellAddress,k);
+            completeSellOrder(buyAddress,sellAddress,k);
         }
         //Buy order is partially fulfilled
+        else if(k==3){
+            completeBuyOrder(buyAddress,sellAddress,k);
+            completeSellOrder(buyAddress,sellAddress,k);
+        }
         else{
-            //completeBuyOrder();
-            //completeSellOrder();
-            //placeBuy();
+            // No orders fulfilled
         }
     }
+// buy  2a(qty) for 2b(price)
+// sell 1b(price) for 2a(qty)
 
-    
-
-    function completeBuyOrder(address buyAddress, address sellAddress) internal { // Cancels the buy order associated with msg.sender if it exists
+    function completeBuyOrder(address buyAddress, address sellAddress, uint256 k) internal { // Cancels the buy order associated with msg.sender if it exists
         
         uint256 price = buyOrders[buyAddress].price; // Store quantity of buy order to refund msg.sender with correct amount
         address prev = _getPrevious(buyAddress); // Find the previous address of the msg.sender in the ordering mapping
         nextBuy[prev] = nextBuy[buyAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
 
         // Delete buy order from buy order mapping and ordering mapping
+        if (k==1 || k==2){
         delete nextBuy[buyAddress];
         delete buyOrders[buyAddress];
         buyCount--; // Decrement the buy count
         token1.transfer(sellAddress, price); // Unlock associated collateral and send it back to msg.sender
-        emit CancelBuyOrder(buyAddress); // Emit a cancel buy order event
+        // emit CancelBuyOrder(buyAddress); // Emit a cancel buy order event
+        } else if (k==3){
+            // Buy Order partially fulfilled
+            buyOrders[buyAddress].price = buyOrders[buyAddress].price - sellOrders[sellAddress].quantity
+            buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellOrders[sellAddress].quantity
+            token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
+            // emit CancelBuyOrder(buyAddress); // Emit a cancel buy order event
+        }
     }
 
-    function completeSellOrder(address buyAddress, address sellAddress) internal { // Cancels the buy order associated with msg.sender if it exists
+    function completeSellOrder(address buyAddress, address sellAddress, uint256 k) internal { // Cancels the buy order associated with msg.sender if it exists
         
         uint256 quantity = sellOrders[sellAddress].quantity; // Store quantity of buy order to refund msg.sender with correct amount
         address prev = _getPrevious(sellAddress); // Find the previous address of the msg.sender in the ordering mapping
         nextSell[prev] = nextSell[sellAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
 
-        // Delete buy order from buy order mapping and ordering mapping
-        delete nextSell[sellAddress];
-        delete sellOrders[sellAddress];
-        sellCount--; // Decrement the buy count
-        token2.transfer(buyAddress, quantity); // Unlock associated collateral and send it back to msg.sender
-        emit CancelSellOrder(sellAddress); // Emit a cancel buy order event
+        if (k==1 || k==3){
+            // Delete buy order from buy order mapping and ordering mapping
+            delete nextSell[sellAddress];
+            delete sellOrders[sellAddress];
+            sellCount--; // Decrement the buy count
+            token2.transfer(buyAddress, quantity); // Unlock associated collateral and send it back to msg.sender
+            // emit CancelSellOrder(sellAddress); // Emit a cancel buy order event
+        }else if (k==2){
+            // sell Order partially fulfilled
+            sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyOrders[buyAddress].quantity
+            sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyOrders[buyAddress].price
+            token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
+            // emit CancelSellOrder(sellAddress);
+        }
     }
 
     function cancelBuy(address buyAddress) external { // Cancels the buy order associated with msg.sender if it exists
