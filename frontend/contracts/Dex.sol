@@ -30,17 +30,22 @@ contract Orderbook{
     struct Order{
         uint256 price;
         uint256 quantity;
+        uint256 filledQty;
+        uint256 unfilledQty;
         uint256 date;
         uint256 unitPrice;
     }
 
     mapping(address => Order) buyOrders; //Maps Buy Orders
-    mapping(address => address) nextBuy; 
+    mapping(address => address) nextBuy; //Used to preserve order based on buy/sell price
     uint256 public buyCount;
 
     mapping(address => Order) sellOrders; //Maps Sell Orders
     mapping(address => address) nextSell;
     uint256 public sellCount;
+
+    Order[] matchedBuyOrders;
+    Order[] matchedSellOrders;
 
     address constant BUFFER = address(1);
 
@@ -117,9 +122,9 @@ contract Orderbook{
         }
     }
     
-    function placeBuy(uint256 _price, uint256 _quantity) external { // Places a buy order and locks associated collateral
+    function placeBuy(uint256 _price, uint256 _quantity, address buyAddress) external { // Places a buy order and locks associated collateral
         require( 
-            buyOrders[msg.sender].date == 0, // Only one buy order per address
+            buyOrders[buyAddress].date == 0, // Only one buy order per address
             "First delete existing buy order"
         );
         require(
@@ -127,39 +132,90 @@ contract Orderbook{
             "Must have nonzero pice and quantity"
         );
 
-        buyOrders[msg.sender] = Order(_price, _quantity, block.timestamp, _price/_quantity); // Create a new order in the buy order mapping for msg.sender
+        buyOrders[buyAddress] = Order(_price, _quantity, 0, _quantity, block.timestamp, _price/_quantity); // Create a new order in the buy order mapping for msg.sender
 
         // Add msg.sender into the appropriate position in the ordering mapping. This is similar to linked list insertion
         address prev = _findPrevBuy(_price/_quantity);
         address temp = nextBuy[prev];
-        nextBuy[prev] = msg.sender;
-        nextBuy[msg.sender] = temp;
+        nextBuy[prev] = buyAddress;
+        nextBuy[buyAddress] = temp;
 
         buyCount++; // Increment the overall buy count
-        token1.transferFrom(msg.sender, address(this), _price); // Transfer the buy order price of token1 from the buyer to the orderbook contract. This locks the associated collateral
-        emit BuyOrderPlaced(_price/_quantity,_price, _quantity, msg.sender);  // Emit buy order placed event
+        token1.transferFrom(buyAddress, address(this), _price); // Transfer the buy order price of token1 from the buyer to the orderbook contract. This locks the associated collateral
+        emit BuyOrderPlaced(_price/_quantity,_price, _quantity, buyAddress);  // Emit buy order placed event
+
+        //Check for match order
+        address sellAddress = nextSell[BUFFER];
+        uint256 k = matchOrders(buyAddress, sellAddress, true);
+        //Buy & Sell Orders exactly fulfill each other
+        if (k == 1){
+            completeBuyOrder(buyAddress,sellAddress);
+            completeSellOrder(buyAddress,sellAddress);
+        }
+        //Sell order is partially fulfilled
+        else if (k == 2){
+            //completeBuyOrder();
+            //completeSellOrder();
+            //placeSell();
+        }
+        //Buy order is partially fulfilled
+        else{
+            //completeBuyOrder();
+            //completeSellOrder();
+            //placeBuy();
+        }
     }
 
-    function cancelBuy() external { // Cancels the buy order associated with msg.sender if it exists
-        require(
-            buyOrders[msg.sender].date != 0,
-            "Buy order must already exist"
-        );
-        uint256 quantity = buyOrders[msg.sender].quantity; // Store quantity of buy order to refund msg.sender with correct amount
-        address prev = _getPrevious(msg.sender); // Find the previous address of the msg.sender in the ordering mapping
-        nextBuy[prev] = nextBuy[msg.sender]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+    
+
+    function completeBuyOrder(address buyAddress, address sellAddress) internal { // Cancels the buy order associated with msg.sender if it exists
+        
+        uint256 price = buyOrders[buyAddress].price; // Store quantity of buy order to refund msg.sender with correct amount
+        address prev = _getPrevious(buyAddress); // Find the previous address of the msg.sender in the ordering mapping
+        nextBuy[prev] = nextBuy[buyAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
 
         // Delete buy order from buy order mapping and ordering mapping
-        delete nextBuy[msg.sender];
-        delete buyOrders[msg.sender];
+        delete nextBuy[buyAddress];
+        delete buyOrders[buyAddress];
         buyCount--; // Decrement the buy count
-        token1.transfer(msg.sender, quantity); // Unlock associated collateral and send it back to msg.sender
-        emit CancelBuyOrder(msg.sender); // Emit a cancel buy order event
+        token1.transfer(sellAddress, price); // Unlock associated collateral and send it back to msg.sender
+        emit CancelBuyOrder(buyAddress); // Emit a cancel buy order event
     }
 
-    function placeSell(uint256 _price, uint256 _quantity) external { // Places a sell order and locks associated collateral
+    function completeSellOrder(address buyAddress, address sellAddress) internal { // Cancels the buy order associated with msg.sender if it exists
+        
+        uint256 quantity = sellOrders[sellAddress].quantity; // Store quantity of buy order to refund msg.sender with correct amount
+        address prev = _getPrevious(sellAddress); // Find the previous address of the msg.sender in the ordering mapping
+        nextSell[prev] = nextSell[sellAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+
+        // Delete buy order from buy order mapping and ordering mapping
+        delete nextSell[sellAddress];
+        delete sellOrders[sellAddress];
+        sellCount--; // Decrement the buy count
+        token2.transfer(buyAddress, quantity); // Unlock associated collateral and send it back to msg.sender
+        emit CancelSellOrder(sellAddress); // Emit a cancel buy order event
+    }
+
+    function cancelBuy(address buyAddress) external { // Cancels the buy order associated with msg.sender if it exists
         require(
-            sellOrders[msg.sender].date == 0, // Only one sell order per address
+            buyOrders[buyAddress].date != 0,
+            "Buy order must already exist"
+        );
+        uint256 quantity = buyOrders[buyAddress].quantity; // Store quantity of buy order to refund msg.sender with correct amount
+        address prev = _getPrevious(buyAddress); // Find the previous address of the msg.sender in the ordering mapping
+        nextBuy[prev] = nextBuy[buyAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+
+        // Delete buy order from buy order mapping and ordering mapping
+        delete nextBuy[buyAddress];
+        delete buyOrders[buyAddress];
+        buyCount--; // Decrement the buy count
+        token1.transfer(buyAddress, quantity); // Unlock associated collateral and send it back to msg.sender
+        emit CancelBuyOrder(buyAddress); // Emit a cancel buy order event
+    }
+
+    function placeSell(uint256 _price, uint256 _quantity, address sellAddress) external { // Places a sell order and locks associated collateral
+        require(
+            sellOrders[sellAddress].date == 0, // Only one sell order per address
             "First delete existing sell order"
         );
         require(
@@ -167,38 +223,38 @@ contract Orderbook{
             "Must have nonzero pice and quantity"
         );
 
-        sellOrders[msg.sender] = Order(_price, _quantity, block.timestamp,_price/_quantity); // Create a new order in the sell order mapping for msg.sender
+        sellOrders[sellAddress] = Order(_price, _quantity, 0, _price, block.timestamp,_price/_quantity); // Create a new order in the sell order mapping for msg.sender
 
         // Add msg.sender into the appropriate position in the ordering mapping. This is similar to linked list insertion
         address prev = _findPrevSell(_price/_quantity);
         address temp = nextSell[prev];
-        nextSell[prev] = msg.sender;
-        nextSell[msg.sender] = temp;
+        nextSell[prev] = sellAddress;
+        nextSell[sellAddress] = temp;
         sellCount++; // Increment the sell count
-        token2.transferFrom(msg.sender, address(this), _quantity); //Transfer the sell order quantity of token2 from the seller to the orderbook contract. This locks the associated collateral
-        emit SellOrderPlaced(_price/_quantity,_price, _quantity, msg.sender); // Emit a sell order placed event
+        token2.transferFrom(sellAddress, address(this), _quantity); //Transfer the sell order quantity of token2 from the seller to the orderbook contract. This locks the associated collateral
+        emit SellOrderPlaced(_price/_quantity,_price, _quantity, sellAddress); // Emit a sell order placed event
     }
 
     // Cancels the sell order associated with msg.sender if it exists
-    function cancelSell() external {
+    function cancelSell(address sellAddress) external {
         require(
-            sellOrders[msg.sender].date != 0,
+            sellOrders[sellAddress].date != 0,
             "Sell order must already exist"
         );
 
         
-        uint256 quantity = sellOrders[msg.sender].quantity; // Store quantity of sell order to refund msg.sender with correct amount
-        address prev = _getPrevious(msg.sender); // Find the previous address of the msg.sender in the ordering mapping
-        nextSell[prev] = nextSell[msg.sender]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+        uint256 quantity = sellOrders[sellAddress].quantity; // Store quantity of sell order to refund msg.sender with correct amount
+        address prev = _getPrevious(sellAddress); // Find the previous address of the msg.sender in the ordering mapping
+        nextSell[prev] = nextSell[sellAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
 
         // Delete sell order from sell order mapping and ordering mapping
-        delete nextSell[msg.sender];
-        delete sellOrders[msg.sender];
+        delete nextSell[sellAddress];
+        delete sellOrders[sellAddress];
 
         
         sellCount--; // Decrement sell count
-        token2.transferFrom(address(this), msg.sender, quantity); // Unlock associated collateral and send it back to msg.sender
-        emit CancelSellOrder(msg.sender); // Emit a cencel sell order event
+        token2.transferFrom(address(this), sellAddress, quantity); // Unlock associated collateral and send it back to msg.sender
+        emit CancelSellOrder(sellAddress); // Emit a cencel sell order event
     }
 
     /* Returns the buy side of the orderbook in four separate arrays. The first
@@ -279,6 +335,81 @@ contract Orderbook{
 
         // Return the four arrays
         return (addressTemp, unitPriceTemp, priceTemp, quantityTemp);
+    }
+    /* Match Order Function. To be called in placeBuy or placeSell functions
+       Returns either 1,2,3:
+       1: Buy & Sell Orders exactly fulfill each other
+       2: Sell order is partially fulfilled
+       3: Buy order is partially fulfilled
+       4: No Orders are matched
+    */
+    function matchOrders(address buyAddress, address sellAddress, bool isBuy) internal returns (uint256) {
+        //If this function is called inside placeBuy AND the new Buy Order matches the Sell Order
+        if (isBuy && buyOrders[buyAddress].unitPrice >= sellOrders[sellAddress].unitPrice){
+
+            // If matched Orders have equal quantities
+            if (buyOrders[buyAddress].unfilledQty == sellOrders[sellAddress].quantity){
+
+                buyOrders[buyAddress].filledQty = buyOrders[buyAddress].quantity;
+                sellOrders[sellAddress].filledQty = sellOrders[sellAddress].price;
+
+                sellOrders[sellAddress].unfilledQty = 0;
+                buyOrders[buyAddress].unfilledQty = 0;
+                return 1;
+            }
+
+            // If matched Orders have different quantities aka partial order fulfilled
+            else if (buyOrders[buyAddress].unfilledQty < sellOrders[sellAddress].unfilledQty){
+                sellOrders[sellAddress].filledQty = buyOrders[buyAddress].quantity;
+                buyOrders[buyAddress].filledQty = buyOrders[buyAddress].quantity;
+
+                sellOrders[sellAddress].unfilledQty = sellOrders[sellAddress].price - sellOrders[sellAddress].filledQty;
+                buyOrders[buyAddress].unfilledQty = 0;
+                return 2;
+            }
+            else{
+                sellOrders[sellAddress].filledQty = sellOrders[sellAddress].price;
+                buyOrders[buyAddress].filledQty = sellOrders[sellAddress].price;
+
+                buyOrders[buyAddress].unfilledQty = buyOrders[buyAddress].quantity - sellOrders[sellAddress].filledQty;
+                sellOrders[sellAddress].unfilledQty = 0;
+                return 3;
+            }
+        }
+
+        //If this function is called inside placeSell AND the new Sell Order matches the Buy Order   
+        else if (!isBuy && sellOrders[sellAddress].unitPrice <= buyOrders[buyAddress].unitPrice){
+            // If matched Orders have equal quantities
+            if (buyOrders[buyAddress].unfilledQty == sellOrders[sellAddress].unfilledQty){
+                buyOrders[buyAddress].filledQty = buyOrders[buyAddress].quantity;
+                sellOrders[sellAddress].filledQty = sellOrders[sellAddress].price;
+
+                sellOrders[sellAddress].unfilledQty = 0;
+                buyOrders[buyAddress].unfilledQty = 0;
+                return 1;
+            }
+
+            // If matched Orders have different quantities aka partial order fulfilled
+            else if (buyOrders[buyAddress].unfilledQty < sellOrders[sellAddress].unfilledQty){
+                sellOrders[sellAddress].filledQty = buyOrders[buyAddress].quantity;
+                buyOrders[buyAddress].filledQty = buyOrders[buyAddress].quantity;
+
+                sellOrders[sellAddress].unfilledQty = sellOrders[sellAddress].price - sellOrders[sellAddress].filledQty;
+                buyOrders[buyAddress].unfilledQty = 0;
+                return 2;
+
+            }
+            else{
+                sellOrders[sellAddress].filledQty = sellOrders[sellAddress].price;
+                buyOrders[buyAddress].filledQty = sellOrders[sellAddress].price;
+
+                buyOrders[buyAddress].unfilledQty = buyOrders[buyAddress].quantity - sellOrders[sellAddress].filledQty;
+                sellOrders[sellAddress].unfilledQty = 0;
+                return 3;
+            }
+        }
+        else return 4;
+
     }
 }
 
