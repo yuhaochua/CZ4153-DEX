@@ -260,6 +260,7 @@ contract Orderbook {
         uint256 price;
         uint256 quantity;
         uint256 date;
+        uint256 unitPrice;
     }
 
     // mapping of buyer address to buy order
@@ -285,7 +286,8 @@ contract Orderbook {
 
     // event emitted whenever a buy order is placed
     event BuyOrderPlaced(
-        uint256 indexed price,
+        uint256 indexed unitPrice,
+        uint256 price,
         uint256 quantity,
         address indexed buyer
     );
@@ -295,7 +297,8 @@ contract Orderbook {
 
     // event emitted whenever a sell order is placed
     event SellOrderPlaced(
-        uint256 indexed price,
+        uint256 indexed unitPrice,
+        uint256 price,
         uint256 quantity,
         address indexed seller
     );
@@ -320,11 +323,11 @@ contract Orderbook {
      */
     function _verifyIndexBuy(
         address prev,
-        uint256 price,
+        uint256 unitPrice,
         address next
     ) internal view returns (bool) {
-        return ((prev == BUFFER || price <= buyOrders[prev].price) &&
-            (next == BUFFER || price > buyOrders[next].price));
+        return ((prev == BUFFER || unitPrice <= buyOrders[prev].unitPrice) &&
+            (next == BUFFER || unitPrice > buyOrders[next].unitPrice));
     }
 
     /* Helper function used to verify the correct insertion position of a
@@ -334,20 +337,20 @@ contract Orderbook {
      */
     function _verifyIndexSell(
         address prev,
-        uint256 price,
+        uint256 unitPrice,
         address next
     ) internal view returns (bool) {
-        return ((prev == BUFFER || price >= sellOrders[prev].price) &&
-            (next == BUFFER || price < sellOrders[next].price));
+        return ((prev == BUFFER || unitPrice >= sellOrders[prev].unitPrice) &&
+            (next == BUFFER || unitPrice < sellOrders[next].unitPrice));
     }
 
     /* Helper function that finds the previous buy order address for the new buy
      * order to add to the list based on the new buy order price.
      */
-    function _findPrevBuy(uint256 price) internal view returns (address) {
+    function _findPrevBuy(uint256 unitPrice) internal view returns (address) {
         address prev = BUFFER;
         while (true) {
-            if (_verifyIndexBuy(prev, price, nextBuy[prev])) {
+            if (_verifyIndexBuy(prev, unitPrice, nextBuy[prev])) {
                 return prev;
             }
             prev = nextBuy[prev];
@@ -357,10 +360,10 @@ contract Orderbook {
     /* Helper function that finds the previous sell order address for the new
      * sell order to add to the list based on the new sell order price.
      */
-    function _findPrevSell(uint256 price) internal view returns (address) {
+    function _findPrevSell(uint256 unitPrice) internal view returns (address) {
         address prev = BUFFER;
         while (true) {
-            if (_verifyIndexSell(prev, price, nextSell[prev])) {
+            if (_verifyIndexSell(prev, unitPrice, nextSell[prev])) {
                 return prev;
             }
             prev = nextSell[prev];
@@ -393,12 +396,12 @@ contract Orderbook {
         );
 
         // Create a new order in the buy order mapping for _buyer
-        buyOrders[_buyer] = Order(_price, _quantity, block.timestamp);
+        buyOrders[_buyer] = Order(_price, _quantity, block.timestamp, _price/_quantity);
 
         /* Add _buyer into the appropriate position in the ordering mapping.
          * This is similar to linked list insertion
          */
-        address prev = _findPrevBuy(_price);
+        address prev = _findPrevBuy(_price/_quantity);
         address temp = nextBuy[prev];
         nextBuy[prev] = _buyer;
         nextBuy[_buyer] = temp;
@@ -412,7 +415,7 @@ contract Orderbook {
         token1.transferFrom(_buyer, address(this), _price);
 
         // Emit buy order placed event
-        emit BuyOrderPlaced(_price, _quantity, _buyer);
+        emit BuyOrderPlaced(_price/_quantity,_price, _quantity, _buyer);
     }
 
     // Cancels the buy order associated with _buyer if it exists
@@ -448,6 +451,27 @@ contract Orderbook {
         emit CancelBuyOrder(msg.sender);
     }
 
+    function completeBuyOrder(address buyAddress, address sellAddress, uint256 k) internal { // Cancels the buy order associated with msg.sender if it exists
+        
+        uint256 price = buyOrders[buyAddress].price; // Store quantity of buy order to refund msg.sender with correct amount
+        address prev = _getPrevious(buyAddress); // Find the previous address of the msg.sender in the ordering mapping
+        nextBuy[prev] = nextBuy[buyAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+
+        // Delete buy order from buy order mapping and ordering mapping
+        if (k==1 || k==2){
+        delete nextBuy[buyAddress];
+        delete buyOrders[buyAddress];
+        buyCount--; // Decrement the buy count
+        token1.transfer(sellAddress, price); // Unlock associated collateral and send it back to msg.sender
+        // emit CancelBuyOrder(buyAddress); // Emit a cancel buy order event
+        } else if (k==3){
+            // Buy Order partially fulfilled
+            buyOrders[buyAddress].price = buyOrders[buyAddress].price - sellOrders[sellAddress].quantity;
+            buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellOrders[sellAddress].quantity;
+            token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
+        }
+    }
+
     // Places a sell order and locks associated collateral
     function placeSell(uint256 _price, uint256 _quantity, address _seller) external {
         // Only one sell order per address
@@ -461,7 +485,7 @@ contract Orderbook {
         );
 
         // Create a new order in the sell order mapping for _seller
-        sellOrders[_seller] = Order(_price, _quantity, block.timestamp);
+        sellOrders[_seller] = Order(_price, _quantity, block.timestamp, _price/_quantity);
 
         /* Add _seller into the appropriate position in the ordering mapping.
          * This is similar to linked list insertion
@@ -480,7 +504,7 @@ contract Orderbook {
         token2.transferFrom(_seller, address(this), _quantity);
 
         // Emit a sell order placed event
-        emit SellOrderPlaced(_price, _quantity, _seller);
+        emit SellOrderPlaced(_price/_quantity, _price, _quantity, _seller);
     }
 
     // Cancels the sell order associated with msg.sender if it exists
@@ -514,6 +538,28 @@ contract Orderbook {
 
         // Emit a cencel sell order event
         emit CancelSellOrder(msg.sender);
+    }
+
+    function completeSellOrder(address buyAddress, address sellAddress, uint256 k) internal { // Cancels the buy order associated with msg.sender if it exists
+        
+        uint256 quantity = sellOrders[sellAddress].quantity; // Store quantity of buy order to refund msg.sender with correct amount
+        address prev = _getPrevious(sellAddress); // Find the previous address of the msg.sender in the ordering mapping
+        nextSell[prev] = nextSell[sellAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+
+        if (k==1 || k==3){
+            // Delete buy order from buy order mapping and ordering mapping
+            delete nextSell[sellAddress];
+            delete sellOrders[sellAddress];
+            sellCount--; // Decrement the buy count
+            token2.transfer(buyAddress, quantity); // Unlock associated collateral and send it back to msg.sender
+            // emit CancelSellOrder(sellAddress); // Emit a cancel buy order event
+        }else if (k==2){
+            // sell Order partially fulfilled
+            sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyOrders[buyAddress].quantity;
+            sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyOrders[buyAddress].price;
+            token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
+            // emit CancelSellOrder(sellAddress);
+        }
     }
 
     /* Returns the buy side of the orderbook in three separate arrays. The first
