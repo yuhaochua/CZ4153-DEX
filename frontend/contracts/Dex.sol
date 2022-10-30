@@ -29,6 +29,16 @@ contract Dex {
     event LogTokenCreated(address tokenAddress, string tokenName, string tokenSymbol);
     event LogBuyOrderPlaced(address buyer, address buyToken, uint256 buyAmt, address payToken, uint256 payAmt);
 
+    // Order struct containing price, quantity, and tokens being transacted
+    struct Order {
+        address orderedBy; // address of buyer/seller
+        uint256 price;
+        uint256 quantity;
+        string token1;
+        string token2;
+        string orderType; // buy or sell
+    }
+
     constructor () {
         owner = msg.sender;
         numTokens = 0;
@@ -155,7 +165,7 @@ contract Dex {
         return (books.orderbooks(identifier), token1, token2);
     }
 
-    function getBuyOrders() view external returns (address[] memory, uint256[] memory, uint256[] memory){
+    function getBuyOrders() view external returns (Order[] memory){
         // address token1;
         // address token2;
         // if (uint160(_token1) > uint160(_token2)) {
@@ -171,24 +181,50 @@ contract Dex {
         address[] memory addressTemp;
         uint256[] memory priceTemp;
         uint256[] memory quantityTemp;
+        string memory _token1;
+        string memory _token2;
 
-        address[] memory retaddressTemp = new address[](numOrders);
-        uint256[] memory retpriceTemp = new uint256[](numOrders);
-        uint256[] memory retquantityTemp = new uint256[](numOrders);
-        uint256 k = 0;
+        // address[] memory bsAddressTemp = new address[](numOrders); // stores address of buyer or seller
+        Order[] memory _orders = new Order[](numOrders);
+        // uint256[] memory buyPriceTemp = new uint256[](numOrders);
+        // uint256[] memory buyQuantityTemp = new uint256[](numOrders);
+
+        // address[] memory sellAddressTemp = new address[](numOrders);
+        // uint256[] memory sellPriceTemp = new uint256[](numOrders);
+        // uint256[] memory sellQuantityTemp = new uint256[](numOrders);
+        uint256 k = 0; // for looping through orders
+        // uint256 x = 0; // for looping through sell orders
         //loop through the available tokens
         for(uint256 i=0; i < identifiers.length; i++) {
             Orderbook book = Orderbook(books.orderbooks(identifiers[i]));
             (addressTemp, priceTemp, quantityTemp) = book.getBuySide();
+            // _token1 = getTokenName(book.token1.address);
+            // _token2 = getTokenName(book.token2.address);
+            _token1 = getTokenName(address(book.token1()));
+            _token2 = getTokenName(address(book.token2()));
             
             for(uint256 j=0; j < addressTemp.length; j++){
-                retaddressTemp[k] = (addressTemp[j]);
-                retpriceTemp[k] = (priceTemp[j]);
-                retquantityTemp[k] = (quantityTemp[j]);
+                // bsAddressTemp[k] = (addressTemp[j]);
+                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "buy");
+                // buyPriceTemp[k] = (priceTemp[j]);
+                // buyQuantityTemp[k] = (quantityTemp[j]);
+                k++;
+            }
+
+            (addressTemp, priceTemp, quantityTemp) = book.getSellSide();
+            for(uint256 j=0; j < addressTemp.length; j++){
+                // bsAddressTemp[k] = (addressTemp[j]);
+                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "sell");
+                // sellPriceTemp[x] = (priceTemp[j]);
+                // sellQuantityTemp[x] = (quantityTemp[j]);
                 k++;
             }
         }
-        return (retaddressTemp, retpriceTemp, retquantityTemp);
+        // still missing names of token being bought/sold.
+        // buyPriceTemp holds the amount of token1 being paid, buyQuantityTemp holds the amount of token2 being bought
+        // buyAddressTemp holds wallet addresses of those who placed the buy orders
+        // 
+        return _orders;
     }
 
 
@@ -252,8 +288,8 @@ contract OrderbookFactory {
  * see the README for further assumptions.
  */
 contract Orderbook {
-    IERC20 token1;
-    IERC20 token2;
+    IERC20 public token1;
+    IERC20 public token2;
 
     // Order struct containing price, quantity, and date created
     struct Order {
