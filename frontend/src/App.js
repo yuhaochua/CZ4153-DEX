@@ -7,21 +7,24 @@ import SellOrder from './components/sellOrder';
 // import Transfer from './components/Transfer';
 import Web3 from 'web3';
 import AvailableTokens from './components/AvailableTokens';
-import IssueToken from './components/CreateToken';
-import { retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
+import CreateToken from './components/CreateToken';
+import { retrieveOrders, retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
 import DropDownOption from './components/DropDownOption';
+// import IssueToken from './components/IssueToken';
 
 function App() {
-  const [address, setAddress] = useState('-')
-  const [ethBalance, setEthBalance] = useState('-')
-  const [isDisconnected, setIsDisconnected] = useState(true)
-  const [returningUser, setReturningUser] = useState(false)
-  const [tokens, setTokens] = useState([])
-  const [tokenAddressPairs, setTokenAddressPairs] = useState([])
-  const [receipient, setReceipient] = useState('') 
-  const [amount, setAmount] = useState('')
-  const [token, setToken] = useState('') 
-  const admin = '0x2666eB9Eff46A404B1C875B23E1b5705855f866B' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const [address, setAddress] = useState('-') // wallet address of current user
+  const [ethBalance, setEthBalance] = useState('-') // eth balance of current user
+  const [isDisconnected, setIsDisconnected] = useState(true) // user wallet disconnected
+  const [returningUser, setReturningUser] = useState(false) // used to bring up metamask when reconnecting
+  const [tokens, setTokens] = useState([]) // available tokens in system
+  const [orders, setOrders] = useState([]) // orders placed
+  const [tokenAddressPairs, setTokenAddressPairs] = useState([]) // mapping between tokens and their addresses
+  const [receipient, setReceipient] = useState('')  // receipient to issue token to
+  const [amount, setAmount] = useState('') // amount of token to issue
+  const [token, setToken] = useState('')  // type of token to issue
+  const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
+  const admin = '0xf78517fea7Ac30df55aa36499BEcff324Dc5747e' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -77,17 +80,21 @@ function App() {
   }
 
   const handleSendToken = async(e) => {
-    e.preventDefault()
     console.log("receipient:",receipient)
     console.log("amount:",amount)
     console.log("token:", token)
     await sendToken(token, receipient, amount, address)
+    setRefresh(!refresh)
+  }
+
+  const handleRefresh = async() => {
+    setRefresh(!refresh) // flipping this boolean will cause refresh state to change, and refresh the content of the page
   }
 
   const showAdminForms = () => {
     return <div className='col-8 row'>
       <div className="col-6">
-            <IssueToken addr={address} key={address}/>
+            <CreateToken addr={address} refreshHandler={handleRefresh} key={address}/>
           </div>
           <div className="col-6">
               <h1>Issue Token</h1>
@@ -103,6 +110,7 @@ function App() {
               <input className='row mt-3' type="text" placeholder='Amount' onChange={(e) => setAmount(e.target.value)}/>
               <input type="button" className='btn btn-primary mt-3' value='Issue Token' onClick={handleSendToken}/> 
           </div>
+          {/* <IssueToken tokenAddressPairs={tokenAddressPairs} addr={address} refreshHandler={handleRefresh} /> */}
     </div>
   }
   
@@ -120,7 +128,15 @@ function App() {
     }
     fetchTokens()
 
-  }, [address])
+    const fetchOrders = async () => {
+      await retrieveOrders().then((result) => {
+        console.log("order results", result)
+        setOrders(result);
+      })
+    }
+    fetchOrders()
+
+  }, [address, refresh])
 
   useLayoutEffect(() => {
     const updateTokenAddressPairs = () => {
@@ -153,20 +169,21 @@ function App() {
 
         <div className="mt-5 row">
           <div className="col-4">
-            <BuyOrder tokenAddressPairs={tokenAddressPairs}/>
+            <BuyOrder tokenAddressPairs={tokenAddressPairs} refreshHandler={handleRefresh} addr={address}/>
           </div>
           <div className="col-4">
-            <SellOrder tokenAddressPairs={tokenAddressPairs}/>
+            <SellOrder tokenAddressPairs={tokenAddressPairs} refreshHandler={handleRefresh} addr={address}/>
           </div>
           <div className="col-4">
-            <Orders />
+          <h1>Your Orders</h1>
+          {address !== '-' ? <Orders addr={address} orders={orders}/> : null}
           </div>
         </div>
         <div className="row mt-5">
           <div className="col-4">
             <h1>Your Tokens</h1>
             {address !== '-' && tokens && tokens.map(token => (
-              <AvailableTokens token={token} addr={address} key={token}/>
+              <AvailableTokens refresh={refresh} token={token} addr={address} key={token}/>
             ))}
           </div>
           {address === admin && showAdminForms()}

@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { createToken } from '../Dex.js';
 
-const CreateToken= ({ addr }) => {
+const CreateToken= ({ addr, refreshHandler }) => {
     const [tokenName, setTokenName] = useState('')
     const [tokenSymbol, setTokenSymbol] = useState('')
 
 
     const handleCreateToken = async(e) => {
-        e.preventDefault()
+        // e.preventDefault()
         console.log(tokenName, tokenSymbol)
         await createToken(tokenName, tokenSymbol, addr)
+        refreshHandler()
     }
 
     return (

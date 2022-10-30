@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useEffect } from 'react';
 import { retrieveTokenName, retrieveTokenBalance } from '../Dex.js';
 
-const AvailableTokens= ({ token, addr }) => {
+const AvailableTokens= ({ token, addr, refresh }) => {
     const [tokenName,setTokenName] = useState('')
     const [tokenBalance, setTokenBalance] = useState('')
 
@@ -18,7 +18,7 @@ const AvailableTokens= ({ token, addr }) => {
         }
         populateTokenDetails()
         
-    }, [])
+    }, [refresh])
 
     return (
         <div className='d-flex flex-row'>
