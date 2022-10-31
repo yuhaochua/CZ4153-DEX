@@ -416,6 +416,15 @@ contract Orderbook {
 
         // Emit buy order placed event
         emit BuyOrderPlaced(_price/_quantity,_price, _quantity, _buyer);
+
+        if(sellCount > 0){
+            address _seller = nextSell[BUFFER];
+            uint256 k = matchOrders(_buyer, _seller, true);
+            if (k!=4){
+                completeBuyOrder(_buyer,_seller,k);
+                completeSellOrder(_buyer,_seller,k);
+            }
+        }
     }
 
     // Cancels the buy order associated with _buyer if it exists
@@ -464,12 +473,13 @@ contract Orderbook {
         buyCount--; // Decrement the buy count
         token1.transfer(sellAddress, price); // Unlock associated collateral and send it back to msg.sender
         // emit CancelBuyOrder(buyAddress); // Emit a cancel buy order event
-        } else if (k==3){
-            // Buy Order partially fulfilled
-            buyOrders[buyAddress].price = buyOrders[buyAddress].price - sellOrders[sellAddress].quantity;
-            buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellOrders[sellAddress].quantity;
-            token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
-        }
+        } 
+        // else if (k==3){
+        //     // Buy Order partially fulfilled
+        //     buyOrders[buyAddress].price = buyOrders[buyAddress].price - sellOrders[sellAddress].quantity;
+        //     buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellOrders[sellAddress].quantity;
+        //     token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
+        // }
     }
 
     // Places a sell order and locks associated collateral
@@ -505,6 +515,15 @@ contract Orderbook {
 
         // Emit a sell order placed event
         emit SellOrderPlaced(_price/_quantity, _price, _quantity, _seller);
+
+        if(buyCount > 0){
+            address _buyer = nextBuy[BUFFER];
+            uint256 k = matchOrders(_buyer, _seller, true);
+            if (k!=4){
+                completeBuyOrder(_buyer,_seller,k);
+                completeSellOrder(_buyer,_seller,k);
+            }
+        }
     }
 
     // Cancels the sell order associated with msg.sender if it exists
@@ -553,13 +572,14 @@ contract Orderbook {
             sellCount--; // Decrement the buy count
             token2.transfer(buyAddress, quantity); // Unlock associated collateral and send it back to msg.sender
             // emit CancelSellOrder(sellAddress); // Emit a cancel buy order event
-        }else if (k==2){
-            // sell Order partially fulfilled
-            sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyOrders[buyAddress].quantity;
-            sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyOrders[buyAddress].price;
-            token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
-            // emit CancelSellOrder(sellAddress);
         }
+        // else if (k==2){
+        //     // sell Order partially fulfilled
+        //     sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyOrders[buyAddress].quantity;
+        //     sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyOrders[buyAddress].price;
+        //     token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
+        //     // emit CancelSellOrder(sellAddress);
+        // }
     }
 
     /* Returns the buy side of the orderbook in three separate arrays. The first
@@ -645,6 +665,30 @@ contract Orderbook {
 
         // Return the spread as a positive number (uint must be positive)
         return bestBuy > bestSell ? bestBuy - bestSell : bestSell - bestBuy;
+    }
+    /* 
+    */
+    function matchOrders(address buyAddress, address sellAddress, bool isBuy) internal view returns (uint256) {
+        //If this function is called inside placeBuy AND the new Buy Order matches the Sell Order
+        if (isBuy && buyOrders[buyAddress].unitPrice >= sellOrders[sellAddress].unitPrice 
+            || !isBuy && sellOrders[sellAddress].unitPrice <= buyOrders[buyAddress].unitPrice){
+            // If matched Orders have equal quantities
+            if (buyOrders[buyAddress].quantity == sellOrders[sellAddress].price){
+                return 1;
+            }
+            // Sell Partial Order
+            else if (buyOrders[buyAddress].quantity < sellOrders[sellAddress].price){
+                return 2;
+            }
+            // Buy Partial Order
+            else if (buyOrders[buyAddress].quantity > sellOrders[sellAddress].price) {
+                return 3;
+            }
+        }
+        else {
+            return 4;
+        }
+
     }
 }
 
