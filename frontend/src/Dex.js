@@ -8,7 +8,7 @@ import artifact from "./truffleProj/build/contracts/Dex.json";
 const myAddress = "0xcc6b9a2Ef844002c413d992B980EeB7b08899A10"; // PLEASE CHANGE IT TO YOURS
 const ganacheWSS = 'ws://127.0.0.1:7545'; // PLEASE CHANGE IT TO YOURS
 
-export const DexContractAddress = "0x90fD24976f2c0630C01F853EF58F719B2a260184"; // PLEASE CHANGE IT TO YOURS
+export const DexContractAddress = "0x0DDbfADBC28dF514602c1D65629EC667df963835"; // PLEASE CHANGE IT TO YOURS
 export const Testnet = "goerli"; // PLEASE CHANGE IT TO YOURS
 
 const web3 = new Web3(window.ethereum);
@@ -98,5 +98,37 @@ export const retrieveOrders = async () => {
     const orders = await contract.methods.getBuyOrders().call();
     console.log("orders: ", orders);
     return orders;
+};
+
+export const cancelBuy = async (_token1, _token2, _addr) => {
+    // doc here: https://web3js.readthedocs.io/en/v1.2.11/web3-eth-contract.html#methods-mymethod-call
+    let minCancelBuyABI = [{
+        "inputs": [],
+        "name": "cancelBuy",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }]
+    let result = await contract.methods.getOrderbookAddress(_token1, _token2).call();
+    console.log("orderbook address: ", result[0]);
+
+    let _orderbookContract = new web3.eth.Contract(minCancelBuyABI, result[0]);
+    await _orderbookContract.methods.cancelBuy().send({from: _addr});
+};
+
+export const cancelSell = async (_token1, _token2, _addr) => {
+    // doc here: https://web3js.readthedocs.io/en/v1.2.11/web3-eth-contract.html#methods-mymethod-call
+    let minCancelSellABI = [{
+        "inputs": [],
+        "name": "cancelSell",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }]
+    let result = await contract.methods.getOrderbookAddress(_token1, _token2).call();
+    console.log("orderbook address: ", result[0]);
+
+    let _orderbookContract = new web3.eth.Contract(minCancelSellABI, result[0]);
+    await _orderbookContract.methods.cancelSell().send({from: _addr});
 };
 

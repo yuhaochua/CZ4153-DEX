@@ -37,6 +37,8 @@ contract Dex {
         string token1;
         string token2;
         string orderType; // buy or sell
+        address token1Addr;
+        address token2Addr;
     }
 
     constructor () {
@@ -166,57 +168,31 @@ contract Dex {
     }
 
     function getBuyOrders() view external returns (Order[] memory){
-        // address token1;
-        // address token2;
-        // if (uint160(_token1) > uint160(_token2)) {
-        //     token1 = _token1;
-        //     token2 = _token2;
-        // } else {
-        //     token1 = _token2;
-        //     token2 = _token1;
-        // }
-        // bytes32 identifier = keccak256(abi.encodePacked(token1, token2));
-        // require(books.orderbooks(identifier) != address(0), "orderbook doesnt exist!");
-
         address[] memory addressTemp;
         uint256[] memory priceTemp;
         uint256[] memory quantityTemp;
         string memory _token1;
         string memory _token2;
 
-        // address[] memory bsAddressTemp = new address[](numOrders); // stores address of buyer or seller
         Order[] memory _orders = new Order[](numOrders);
-        // uint256[] memory buyPriceTemp = new uint256[](numOrders);
-        // uint256[] memory buyQuantityTemp = new uint256[](numOrders);
 
-        // address[] memory sellAddressTemp = new address[](numOrders);
-        // uint256[] memory sellPriceTemp = new uint256[](numOrders);
-        // uint256[] memory sellQuantityTemp = new uint256[](numOrders);
         uint256 k = 0; // for looping through orders
-        // uint256 x = 0; // for looping through sell orders
+
         //loop through the available tokens
         for(uint256 i=0; i < identifiers.length; i++) {
             Orderbook book = Orderbook(books.orderbooks(identifiers[i]));
             (addressTemp, priceTemp, quantityTemp) = book.getBuySide();
-            // _token1 = getTokenName(book.token1.address);
-            // _token2 = getTokenName(book.token2.address);
             _token1 = getTokenName(address(book.token1()));
             _token2 = getTokenName(address(book.token2()));
             
             for(uint256 j=0; j < addressTemp.length; j++){
-                // bsAddressTemp[k] = (addressTemp[j]);
-                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "buy");
-                // buyPriceTemp[k] = (priceTemp[j]);
-                // buyQuantityTemp[k] = (quantityTemp[j]);
+                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "buy", address(book.token1()), address(book.token2()));
                 k++;
             }
 
             (addressTemp, priceTemp, quantityTemp) = book.getSellSide();
             for(uint256 j=0; j < addressTemp.length; j++){
-                // bsAddressTemp[k] = (addressTemp[j]);
-                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "sell");
-                // sellPriceTemp[x] = (priceTemp[j]);
-                // sellQuantityTemp[x] = (quantityTemp[j]);
+                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "sell", address(book.token1()), address(book.token2()));
                 k++;
             }
         }
