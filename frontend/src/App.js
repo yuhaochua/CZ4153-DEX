@@ -24,7 +24,9 @@ function App() {
   const [amount, setAmount] = useState('') // amount of token to issue
   const [token, setToken] = useState('')  // type of token to issue
   const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
-  const admin = '0xf78517fea7Ac30df55aa36499BEcff324Dc5747e' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const [refreshOrders, setRefreshOrders] = useState(false) // just a state to make the page refresh orders
+
+  const admin = '0x90836d4A6ce09A3A8e031653e677ef0Da05675D2' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -131,7 +133,8 @@ function App() {
     const fetchOrders = async () => {
       await retrieveOrders().then((result) => {
         console.log("order results", result)
-        setOrders(result);
+        setOrders(result)
+        setRefreshOrders(!refreshOrders)
       })
     }
     fetchOrders()
@@ -176,7 +179,7 @@ function App() {
           </div>
           <div className="col-4">
           <h1>Your Orders</h1>
-          {address !== '-' ? <Orders addr={address} orders={orders}/> : null}
+          {address !== '-' ? <Orders addr={address} orders={orders} refreshHandler={handleRefresh} refreshOrders={refreshOrders}/> : null}
           </div>
         </div>
         <div className="row mt-5">
