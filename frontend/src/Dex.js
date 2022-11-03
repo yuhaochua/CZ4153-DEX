@@ -8,7 +8,7 @@ import artifact from "./truffleProj/build/contracts/Dex.json";
 const myAddress = "0xcc6b9a2Ef844002c413d992B980EeB7b08899A10"; // PLEASE CHANGE IT TO YOURS
 const ganacheWSS = 'ws://127.0.0.1:7545'; // PLEASE CHANGE IT TO YOURS
 
-export const DexContractAddress = "0x0cc8D18e1C29b0504FDa2b6437Dc6AA6494d7914"; // PLEASE CHANGE IT TO YOURS
+export const DexContractAddress = "0x9B15363830fF8Bedc95182B3Bbf6c892348E51a1"; // PLEASE CHANGE IT TO YOURS
 export const Testnet = "goerli"; // PLEASE CHANGE IT TO YOURS
 
 const web3 = new Web3(window.ethereum);
@@ -95,7 +95,7 @@ export const placeBuyOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _add
 export const retrieveOrders = async () => {
     // doc here: https://web3js.readthedocs.io/en/v1.2.11/web3-eth-contract.html#methods-mymethod-call
     console.log("retrieving orders...")
-    const orders = await contract.methods.getBuyOrders().call();
+    const orders = await contract.methods.getOrders().call();
     console.log("orders: ", orders);
     return orders;
 };

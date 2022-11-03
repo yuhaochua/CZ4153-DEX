@@ -22,6 +22,7 @@ contract Dex {
     uint256 private numTokens;
     uint256 private numOrders;
     OrderbookFactory private books = new OrderbookFactory();
+    Order[] public _orders;
     bytes32[] private identifiers;
 
     address public owner;
@@ -167,16 +168,15 @@ contract Dex {
         return (books.orderbooks(identifier), token1, token2);
     }
 
-    function getBuyOrders() view external returns (Order[] memory){
+    function getOrders() external returns (Order[] memory){
         address[] memory addressTemp;
         uint256[] memory priceTemp;
         uint256[] memory quantityTemp;
         string memory _token1;
         string memory _token2;
-
-        Order[] memory _orders = new Order[](numOrders);
-
-        uint256 k = 0; // for looping through orders
+        for(uint256 i=0; i < _orders.length; i++) {
+            _orders.pop();
+        }
 
         //loop through the available tokens
         for(uint256 i=0; i < identifiers.length; i++) {
@@ -186,14 +186,12 @@ contract Dex {
             _token2 = getTokenName(address(book.token2()));
             
             for(uint256 j=0; j < addressTemp.length; j++){
-                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "buy", address(book.token1()), address(book.token2()));
-                k++;
+                _orders.push(Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "buy", address(book.token1()), address(book.token2())));
             }
 
             (addressTemp, priceTemp, quantityTemp) = book.getSellSide();
             for(uint256 j=0; j < addressTemp.length; j++){
-                _orders[k] = Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "sell", address(book.token1()), address(book.token2()));
-                k++;
+                _orders.push(Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "sell", address(book.token1()), address(book.token2())));
             }
         }
         // still missing names of token being bought/sold.
@@ -447,7 +445,7 @@ contract Orderbook {
         );
 
         // Store quantity of buy order to refund msg.sender with correct amount
-        uint256 quantity = buyOrders[msg.sender].quantity;
+        uint256 price = buyOrders[msg.sender].price;
 
         // Find the previous address of the msg.sender in the ordering mapping
         address prev = _getPrevious(msg.sender);
@@ -462,11 +460,10 @@ contract Orderbook {
         // Decrement the buy count
         buyCount--;
 
-        // approve corresponding wallet to draw funds from this contract
-        token1.approve(msg.sender, quantity);
+        // approve corresponding wallet to dr
         // uint256 allowance = token1.allowance(address(this), msg.sender);
         // Unlock associated collateral and send it back to msg.sender
-        token1.transfer(msg.sender, quantity);
+        token1.transfer(msg.sender, price);
 
         // Emit a cancel buy order event
         emit CancelBuyOrder(msg.sender);
@@ -566,8 +563,6 @@ contract Orderbook {
         // Decrement sell count
         sellCount--;
 
-        // approve corresponding wallet to draw funds from this contract
-        token2.approve(msg.sender, quantity);
         // console.log(token2.allowance(address(this), msg.sender));
         // Unlock associated collateral and send it back to msg.sender
         token2.transfer(msg.sender, quantity);
