@@ -483,8 +483,22 @@ contract Orderbook {
 
             buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellQuantity;
             token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
-            
+            if (buyOrders[buyAddress].quantity == 0 || buyOrders[buyAddress].price == 0){
+                address prev = _getPrevious(buyAddress); // Find the previous address of the msg.sender in the ordering mapping
+                nextBuy[prev] = nextBuy[buyAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+                // Delete buy order from buy order mapping and ordering mapping
+                delete nextBuy[buyAddress];
+                delete buyOrders[buyAddress];
+                sellCount--; // Decrement the buy count
+                if(buyOrders[buyAddress].quantity == 0){
+                    token2.transfer(buyAddress, buyOrders[buyAddress].price);
+                }
+                else if (buyOrders[buyAddress].price == 0){
+                    token2.transfer(buyAddress, buyOrders[buyAddress].quantity);
+                }
+            }
         }
+        
     }
 
     // Places a sell order and locks associated collateral
@@ -584,6 +598,21 @@ contract Orderbook {
             sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyQuantity;
             sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyPrice;
             token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
+
+            if (sellOrders[sellAddress].quantity == 0 || sellOrders[sellAddress].price == 0){
+                address prev = _getPrevious(sellAddress); // Find the previous address of the msg.sender in the ordering mapping
+                nextSell[prev] = nextSell[sellAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+                // Delete buy order from buy order mapping and ordering mapping
+                delete nextSell[sellAddress];
+                delete sellOrders[sellAddress];
+                sellCount--; // Decrement the buy count
+                if(sellOrders[sellAddress].quantity == 0){
+                    token2.transfer(sellAddress, sellOrders[sellAddress].price);
+                }
+                else if (sellOrders[sellAddress].price == 0){
+                    token2.transfer(sellAddress, sellOrders[sellAddress].quantity);
+                }
+            }
             
             // emit CancelSellOrder(sellAddress);
             
