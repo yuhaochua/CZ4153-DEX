@@ -15,9 +15,9 @@ const BuyOrder= ({tokenAddressPairs, addr, refreshHandler}) => {
 
     return (
         <>
-            <h1>Buy Order</h1>
+            <h1>Place Order</h1>
             <div className="d-flex flex-row">
-                <input className='row mt-3' type="text" placeholder='Amount to buy' onChange={(e) => setBuyAmt(e.target.value)}/>
+                <input className='row mt-3' type="text" placeholder='Amount to order' onChange={(e) => setBuyAmt(e.target.value)}/>
                 <select className="mt-3" onChange={(e) => setBuyToken(e.target.value)}>
                     <option value=""></option>
                     {tokenAddressPairs && tokenAddressPairs.map(pair => (
