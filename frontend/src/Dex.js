@@ -5,11 +5,7 @@ import Web3 from "web3";
 // importing a compiled contract artifact which contains function signature etc. to interact
 import artifact from "./truffleProj/build/contracts/Dex.json";
 
-const myAddress = "0xcc6b9a2Ef844002c413d992B980EeB7b08899A10"; // PLEASE CHANGE IT TO YOURS
-const ganacheWSS = 'ws://127.0.0.1:7545'; // PLEASE CHANGE IT TO YOURS
-
-export const DexContractAddress = "0x9B15363830fF8Bedc95182B3Bbf6c892348E51a1"; // PLEASE CHANGE IT TO YOURS
-export const Testnet = "goerli"; // PLEASE CHANGE IT TO YOURS
+export const DexContractAddress = "0xC77fEcfe81A4a38018433E8C33bCF542662031AD"; // PLEASE CHANGE IT TO YOURS
 
 const web3 = new Web3(window.ethereum);
 // const web3 = new Web3(Web3.currentProvider || new Web3.providers.WebsocketProvider(ganacheWSS));
@@ -50,7 +46,7 @@ export const retrieveTokenBalance = async (_name, _addr) => {
     return balance;
 };
 
-export const placeBuyOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _addr) => {
+export const placeOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _addr, _isTimed) => {
     // only need the approve function from ERC20
     let minABI = [
         // approve
@@ -79,7 +75,7 @@ export const placeBuyOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _add
         }
     ];
 
-    // expecting result to be (orderbookaddress, token1 address, token2 address)
+    // expecting result to be (orderbookaddress, token1address, token2address)
     let result = await contract.methods.getOrderbookAddress(_buyToken, _payToken).call();
     console.log("orderbook address: ", result[0]);
     if(result[0] === '0x0000000000000000000000000000000000000000') {
@@ -89,7 +85,7 @@ export const placeBuyOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _add
     let _payTokenContract = new web3.eth.Contract(minABI, _payToken);
     await _payTokenContract.methods.approve(result[0], _payAmt).send({from: _addr});
     
-    await contract.methods.buy(_buyToken, _buyAmt, _payToken, _payAmt).send({from: _addr});
+    await contract.methods.buy(_buyToken, _buyAmt, _payToken, _payAmt, _isTimed).send({from: _addr});
 }
 
 export const retrieveOrders = async () => {
