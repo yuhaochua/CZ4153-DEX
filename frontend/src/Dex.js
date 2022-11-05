@@ -5,10 +5,10 @@ import Web3 from "web3";
 // importing a compiled contract artifact which contains function signature etc. to interact
 import artifact from "./truffleProj/build/contracts/Dex.json";
 
-const myAddress = "0xcc6b9a2Ef844002c413d992B980EeB7b08899A10"; // PLEASE CHANGE IT TO YOURS
-const ganacheWSS = 'ws://127.0.0.1:7545'; // PLEASE CHANGE IT TO YOURS
+// const myAddress = "0xcc6b9a2Ef844002c413d992B980EeB7b08899A10"; // PLEASE CHANGE IT TO YOURS
+// const ganacheWSS = 'ws://127.0.0.1:7545'; // PLEASE CHANGE IT TO YOURS
 
-export const DexContractAddress = "0x9B15363830fF8Bedc95182B3Bbf6c892348E51a1"; // PLEASE CHANGE IT TO YOURS
+export const DexContractAddress = "0x41401b3fE277b3159914b07e9Df5d755ACC0CDf4"; // PLEASE CHANGE IT TO YOURS
 export const Testnet = "goerli"; // PLEASE CHANGE IT TO YOURS
 
 const web3 = new Web3(window.ethereum);
@@ -50,7 +50,7 @@ export const retrieveTokenBalance = async (_name, _addr) => {
     return balance;
 };
 
-export const placeBuyOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _addr) => {
+export const placeOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _addr, _isTimed) => {
     // only need the approve function from ERC20
     let minABI = [
         // approve
@@ -89,7 +89,7 @@ export const placeBuyOrder = async (_buyToken, _buyAmt, _payToken, _payAmt, _add
     let _payTokenContract = new web3.eth.Contract(minABI, _payToken);
     await _payTokenContract.methods.approve(result[0], _payAmt).send({from: _addr});
     
-    await contract.methods.buy(_buyToken, _buyAmt, _payToken, _payAmt).send({from: _addr});
+    await contract.methods.buy(_buyToken, _buyAmt, _payToken, _payAmt, _isTimed).send({from: _addr});
 }
 
 export const retrieveOrders = async () => {

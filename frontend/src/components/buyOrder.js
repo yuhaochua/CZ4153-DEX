@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { placeBuyOrder } from "../Dex";
+import { placeOrder } from "../Dex";
 
 const BuyOrder= ({tokenAddressPairs, addr, refreshHandler}) => {
     const [buyToken, setBuyToken] = useState('')
     const [payToken, setPayToken] = useState('')
+    const [isTimed, setIsTimed] = useState(false)
     const [buyAmt, setBuyAmt] = useState('')
     const [payAmt, setPayAmt] = useState('')
 
     const handleBuy = async(e) => {
         e.preventDefault()
-        await placeBuyOrder(buyToken, buyAmt, payToken, payAmt, addr)
+        await placeOrder(buyToken, buyAmt, payToken, payAmt, addr, isTimed)
         refreshHandler()
     }
 
@@ -34,7 +35,13 @@ const BuyOrder= ({tokenAddressPairs, addr, refreshHandler}) => {
                     ))}                    
                 </select>
             </div>
-            <input type="button" className='btn btn-success mt-3' value='Place Buy Order' onClick={handleBuy}/>       
+            <div className="d-flex flex-row">                
+                <input class="form-check-input mt-4" type="checkbox" id="isTimed" onChange={(e) => setIsTimed(e.target.checked)}/>
+                <label class="form-check-label mt-4" for="isTimed">
+                    Timed Order
+                </label>
+                <input type="button" className='btn btn-success m-3' value='Place Order' onClick={handleBuy}/>     
+            </div>
         </>
     );
 };

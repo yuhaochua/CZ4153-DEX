@@ -8,7 +8,7 @@ import SellOrder from './components/sellOrder';
 import Web3 from 'web3';
 import AvailableTokens from './components/AvailableTokens';
 import CreateToken from './components/CreateToken';
-import { retrieveOrders, retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
+import { cancelBuy, cancelSell, retrieveOrders, retrieveTokenName, retrieveTokens, sendToken } from './Dex.js';
 import DropDownOption from './components/DropDownOption';
 // import IssueToken from './components/IssueToken';
 
@@ -26,7 +26,7 @@ function App() {
   const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
   const [refreshOrders, setRefreshOrders] = useState(false) // just a state to make the page refresh orders
 
-  const admin = '0xCD2eBca3defCb7fb2F59A1e739d9172E9F581886' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const admin = '0xA386A0633cb4628951BBEDcfC5F879C31551928f' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -140,6 +140,26 @@ function App() {
     fetchOrders()
 
   }, [address, refresh])
+
+  useEffect(() => {
+    const inter = setInterval(() => {
+      console.log("cancelling order...")
+      orders.length > 0 && orders.map(async order => {
+        console.log("PLACED BY: ",order.orderedBy)
+        if(order.isTimed && order.orderedBy === address){
+          console.log("timenow is ", Date.now())
+          console.log("ordered time is ", order.date)
+          if(Date.now() - order.date >= 15000){
+            // cancel the buy/sell order
+            order.orderType === "buy" ? await cancelBuy(order.token1Addr, order.token2Addr,address) : await cancelSell(order.token1Addr, order.token2Addr,address)
+            setRefresh(!refresh);
+          }
+        }         
+      })
+    }, 5000);
+
+    return () => clearInterval(inter)
+  }, [orders.length])
 
   useLayoutEffect(() => {
     const updateTokenAddressPairs = () => {

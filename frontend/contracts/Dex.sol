@@ -20,7 +20,6 @@ contract Dex {
     mapping (address => ERC20) private availableTokens;
     address[] private tokenAddresses;
     uint256 private numTokens;
-    uint256 private numOrders;
     OrderbookFactory private books = new OrderbookFactory();
     Order[] public _orders;
     bytes32[] private identifiers;
@@ -35,6 +34,8 @@ contract Dex {
         address orderedBy; // address of buyer/seller
         uint256 price;
         uint256 quantity;
+        uint256 date;
+        bool isTimed;
         string token1;
         string token2;
         string orderType; // buy or sell
@@ -45,7 +46,6 @@ contract Dex {
     constructor () {
         owner = msg.sender;
         numTokens = 0;
-        numOrders = 0;
     }
 
 
@@ -103,7 +103,7 @@ contract Dex {
     // the logic for this buy is a little weird, because the orderbook assumes the token to be bought/sold.
     // for example in orderbook for tokenA and tokenB. orderbook always assumes tokenA is the one being sold, 
     // tokenB is the one being bought. because of this, when we want to buy tokenA, we have to place a sell order for token B.
-    function buy(address _buyToken, uint256 _buyAmt, address _payToken, uint256 _payAmt) public {
+    function buy(address _buyToken, uint256 _buyAmt, address _payToken, uint256 _payAmt, bool _isTimedOrder) public {
         // first check whether there is an existing orderboook for this pair of tokens
         address token1;
         address token2;
@@ -126,13 +126,12 @@ contract Dex {
         // if _buyToken is cash, means we need to place sell order, if is commodity, means we need to place buy order
         if(_buyToken == token1){
             //place sell order
-            book.placeSell(_buyAmt, _payAmt, msg.sender);
+            book.placeSell(_buyAmt, _payAmt, msg.sender, _isTimedOrder);
         }else if(_buyToken == token2){
             //place buy order
-            book.placeBuy(_payAmt, _buyAmt, msg.sender);
+            book.placeBuy(_payAmt, _buyAmt, msg.sender, _isTimedOrder);
         }
 
-        numOrders++;
         emit LogBuyOrderPlaced(msg.sender, _buyToken, _buyAmt, _payToken, _payAmt);
     }
 
@@ -172,6 +171,9 @@ contract Dex {
         address[] memory addressTemp;
         uint256[] memory priceTemp;
         uint256[] memory quantityTemp;
+        uint256[] memory dateTemp;
+        bool[] memory isTimedTemp;
+
         string memory _token1;
         string memory _token2;
         for(uint256 i=0; i < _orders.length; i++) {
@@ -181,23 +183,20 @@ contract Dex {
         //loop through the available tokens
         for(uint256 i=0; i < identifiers.length; i++) {
             Orderbook book = Orderbook(books.orderbooks(identifiers[i]));
-            (addressTemp, priceTemp, quantityTemp) = book.getBuySide();
+            (addressTemp, priceTemp, quantityTemp, dateTemp, isTimedTemp) = book.getBuySide();
             _token1 = getTokenName(address(book.token1()));
             _token2 = getTokenName(address(book.token2()));
             
             for(uint256 j=0; j < addressTemp.length; j++){
-                _orders.push(Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "buy", address(book.token1()), address(book.token2())));
+                _orders.push(Order(addressTemp[j], priceTemp[j], quantityTemp[j], dateTemp[j], isTimedTemp[j],_token1, _token2, "buy", address(book.token1()), address(book.token2())));
             }
 
-            (addressTemp, priceTemp, quantityTemp) = book.getSellSide();
+            (addressTemp, priceTemp, quantityTemp, dateTemp, isTimedTemp) = book.getSellSide();
             for(uint256 j=0; j < addressTemp.length; j++){
-                _orders.push(Order(addressTemp[j], priceTemp[j], quantityTemp[j], _token1, _token2, "sell", address(book.token1()), address(book.token2())));
+                _orders.push(Order(addressTemp[j], priceTemp[j], quantityTemp[j], dateTemp[j], isTimedTemp[j],_token1, _token2, "sell", address(book.token1()), address(book.token2())));
             }
         }
-        // still missing names of token being bought/sold.
-        // buyPriceTemp holds the amount of token1 being paid, buyQuantityTemp holds the amount of token2 being bought
-        // buyAddressTemp holds wallet addresses of those who placed the buy orders
-        // 
+
         return _orders;
     }
 
@@ -271,6 +270,7 @@ contract Orderbook {
         uint256 quantity;
         uint256 date;
         uint256 unitPrice;
+        bool isTimeOrder; // whether it is a time conditional order
     }
 
     // mapping of buyer address to buy order
@@ -394,19 +394,23 @@ contract Orderbook {
     }
 
     // Places a buy order and locks associated collateral
-    function placeBuy(uint256 _price, uint256 _quantity, address _buyer) external {
+    function placeBuy(uint256 _price, uint256 _quantity, address _buyer, bool _isTimedOrder) external {
         // Only one buy order per address
         require(
             buyOrders[_buyer].date == 0,
             "First delete existing buy order"
         );
         require(
+            sellOrders[_buyer].date == 0,
+            "Cannot place buy order for token that you are selling"
+        );
+        require(
             _price != 0 && _quantity != 0,
-            "Must have nonzero pice and quantity"
+            "Must have nonzero price and quantity"
         );
 
         // Create a new order in the buy order mapping for _buyer
-        buyOrders[_buyer] = Order(_price, _quantity, block.timestamp, _price/_quantity);
+        buyOrders[_buyer] = Order(_price, _quantity, block.timestamp, _price/_quantity, _isTimedOrder);
 
         /* Add _buyer into the appropriate position in the ordering mapping.
          * This is similar to linked list insertion
@@ -491,25 +495,29 @@ contract Orderbook {
             buyOrders[buyAddress].price = buyOrders[buyAddress].price - sellPrice;
 
             buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellQuantity;
-            token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
+            token1.transfer(sellAddress, sellPrice); // Unlock associated collateral and send it back to msg.sender
             
         }
     }
 
     // Places a sell order and locks associated collateral
-    function placeSell(uint256 _price, uint256 _quantity, address _seller) external {
+    function placeSell(uint256 _price, uint256 _quantity, address _seller, bool _isTimedOrder) external {
         // Only one sell order per address
         require(
             sellOrders[_seller].date == 0,
             "First delete existing sell order"
         );
         require(
+            buyOrders[_seller].date == 0,
+            "Cannot place sell order for token that you are buying"
+        );
+        require(
             _price != 0 && _quantity != 0,
-            "Must have nonzero pice and quantity"
+            "Must have nonzero price and quantity"
         );
 
         // Create a new order in the sell order mapping for _seller
-        sellOrders[_seller] = Order(_price, _quantity, block.timestamp, _price/_quantity);
+        sellOrders[_seller] = Order(_price, _quantity, block.timestamp, _price/_quantity, _isTimedOrder);
 
         /* Add _seller into the appropriate position in the ordering mapping.
          * This is similar to linked list insertion
@@ -590,7 +598,7 @@ contract Orderbook {
             // sell Order partially fulfilled
             sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyQuantity;
             sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyPrice;
-            token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
+            token2.transfer(buyAddress, buyQuantity);
             
             // emit CancelSellOrder(sellAddress);
             
@@ -608,13 +616,18 @@ contract Orderbook {
         returns (
             address[] memory,
             uint256[] memory,
-            uint256[] memory
+            uint256[] memory,
+            uint256[] memory,
+            bool[] memory
         )
     {
         // Instantiate three arrays equal in length to the total buy count
         address[] memory addressTemp = new address[](buyCount);
         uint256[] memory priceTemp = new uint256[](buyCount);
         uint256[] memory quantityTemp = new uint256[](buyCount);
+        uint256[] memory dateTemp = new uint256[](buyCount);
+        bool[] memory isTimedTemp = new bool[](buyCount);
+
 
         // Set current address equal to the first buy order address
         address current = nextBuy[BUFFER];
@@ -626,12 +639,14 @@ contract Orderbook {
 
             priceTemp[i] = order.price;
             quantityTemp[i] = order.quantity;
+            dateTemp[i] = order.date;
+            isTimedTemp[i] = order.isTimeOrder;
 
             current = nextBuy[current];
         }
 
         // Return the three arrays
-        return (addressTemp, priceTemp, quantityTemp);
+        return (addressTemp, priceTemp, quantityTemp, dateTemp, isTimedTemp);
     }
 
     /* Returns the sell side of the orderbook in three separate arrays. The first
@@ -645,13 +660,18 @@ contract Orderbook {
         returns (
             address[] memory,
             uint256[] memory,
-            uint256[] memory
+            uint256[] memory,
+            uint256[] memory,
+            bool[] memory
         )
     {
         // Instantiate three arrays equal in length to the total sell count
         address[] memory addressTemp = new address[](sellCount);
         uint256[] memory priceTemp = new uint256[](sellCount);
         uint256[] memory quantityTemp = new uint256[](sellCount);
+        uint256[] memory dateTemp = new uint256[](sellCount);
+        bool[] memory isTimedTemp = new bool[](sellCount);
+
 
         // Set current address equal to the first sell order address
         address current = nextSell[BUFFER];
@@ -663,25 +683,20 @@ contract Orderbook {
 
             priceTemp[i] = order.price;
             quantityTemp[i] = order.quantity;
+            dateTemp[i] = order.date;
+            isTimedTemp[i] = order.isTimeOrder;
 
             current = nextSell[current];
         }
 
         // Return the three arrays
-        return (addressTemp, priceTemp, quantityTemp);
+        return (addressTemp, priceTemp, quantityTemp, dateTemp, isTimedTemp);
     }
 
-    /* Returns the spread of the orderbook defined as the absolute value of the
-     * difference between the highest buy price and the lowest sell price.
-     */
-    function getSpread() external view returns (uint256) {
-        uint256 bestSell = sellOrders[nextSell[BUFFER]].price;
-        uint256 bestBuy = buyOrders[nextBuy[BUFFER]].price;
 
-        // Return the spread as a positive number (uint must be positive)
-        return bestBuy > bestSell ? bestBuy - bestSell : bestSell - bestBuy;
-    }
     /* 
+    Used to match the buy and sell orders based on unit price. 
+    If the unit prices are a equal or better, then the orders will be matched.
     */
     function matchOrders(address buyAddress, address sellAddress, bool isBuy) internal view returns (uint256) {
         //If this function is called inside placeBuy AND the new Buy Order matches the Sell Order
