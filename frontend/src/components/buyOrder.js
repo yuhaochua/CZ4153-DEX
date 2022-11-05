@@ -35,12 +35,12 @@ const BuyOrder= ({tokenAddressPairs, addr, refreshHandler}) => {
                     ))}                    
                 </select>
             </div>
-            <div className="d-flex flex-row">                
-                <input class="form-check-input mt-4" type="checkbox" id="isTimed" onChange={(e) => setIsTimed(e.target.checked)}/>
-                <label class="form-check-label mt-4" for="isTimed">
+            <div className="d-flex flex-row mt-3">                
+                <input class="form-check-input mt-2" type="checkbox" id="isTimed" onChange={(e) => setIsTimed(e.target.checked)}/>
+                <label class="form-check-label mt-2" for="isTimed">
                     Timed Order
                 </label>
-                <input type="button" className='btn btn-success m-3' value='Place Order' onClick={handleBuy}/>     
+                <input type="button" className='btn btn-success mx-3' value='Place Order' onClick={handleBuy}/>     
             </div>
         </>
     );

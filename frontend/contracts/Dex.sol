@@ -35,7 +35,7 @@ contract Dex {
         uint256 price;
         uint256 quantity;
         uint256 date;
-        bool isTimed;
+        bool isTimed; // whether the it is a conditional timed order
         string token1;
         string token2;
         string orderType; // buy or sell
@@ -167,6 +167,7 @@ contract Dex {
         return (books.orderbooks(identifier), token1, token2);
     }
 
+    // To be returned to the frontend
     function getOrders() external returns (Order[] memory){
         address[] memory addressTemp;
         uint256[] memory priceTemp;
@@ -176,6 +177,8 @@ contract Dex {
 
         string memory _token1;
         string memory _token2;
+
+        // empty the current orders array
         for(uint256 i=0; i < _orders.length; i++) {
             _orders.pop();
         }
@@ -495,9 +498,23 @@ contract Orderbook {
             buyOrders[buyAddress].price = buyOrders[buyAddress].price - sellPrice;
 
             buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellQuantity;
-            token1.transfer(sellAddress, sellPrice); // Unlock associated collateral and send it back to msg.sender
-            
+            token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
+            if (buyOrders[buyAddress].quantity == 0 || buyOrders[buyAddress].price == 0){
+                address prev = _getPrevious(buyAddress); // Find the previous address of the msg.sender in the ordering mapping
+                nextBuy[prev] = nextBuy[buyAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+                // Delete buy order from buy order mapping and ordering mapping
+                delete nextBuy[buyAddress];
+                delete buyOrders[buyAddress];
+                sellCount--; // Decrement the buy count
+                if(buyOrders[buyAddress].quantity == 0){
+                    token2.transfer(buyAddress, buyOrders[buyAddress].price);
+                }
+                else if (buyOrders[buyAddress].price == 0){
+                    token2.transfer(buyAddress, buyOrders[buyAddress].quantity);
+                }
+            }
         }
+        
     }
 
     // Places a sell order and locks associated collateral
@@ -598,7 +615,22 @@ contract Orderbook {
             // sell Order partially fulfilled
             sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyQuantity;
             sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyPrice;
-            token2.transfer(buyAddress, buyQuantity);
+            token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
+
+            if (sellOrders[sellAddress].quantity == 0 || sellOrders[sellAddress].price == 0){
+                address prev = _getPrevious(sellAddress); // Find the previous address of the msg.sender in the ordering mapping
+                nextSell[prev] = nextSell[sellAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
+                // Delete sell order from sell order mapping and ordering mapping
+                delete nextSell[sellAddress];
+                delete sellOrders[sellAddress];
+                sellCount--; // Decrement the sell count
+                if(sellOrders[sellAddress].quantity == 0){
+                    token2.transfer(sellAddress, sellOrders[sellAddress].price);
+                }
+                else if (sellOrders[sellAddress].price == 0){
+                    token2.transfer(sellAddress, sellOrders[sellAddress].quantity);
+                }
+            }
             
             // emit CancelSellOrder(sellAddress);
             

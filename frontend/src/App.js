@@ -26,7 +26,7 @@ function App() {
   const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
   const [refreshOrders, setRefreshOrders] = useState(false) // just a state to make the page refresh orders
 
-  const admin = '0xA386A0633cb4628951BBEDcfC5F879C31551928f' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const admin = '0xdF87f39C522c54ba1281AAf7df25a2223031b9F1' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -190,7 +190,7 @@ function App() {
 
         </div>
 
-        <div className="mt-5 row">
+        <div className="mt-3 row">
           <div className="col-4">
             <BuyOrder tokenAddressPairs={tokenAddressPairs} refreshHandler={handleRefresh} addr={address}/>
           </div>
@@ -199,7 +199,7 @@ function App() {
           {address !== '-' ? <Orders addr={address} orders={orders} refreshHandler={handleRefresh} refreshOrders={refreshOrders}/> : null}
           </div>
         </div>
-        <div className="row mt-5">
+        <div className="row mt-4">
           <div className="col-4">
             <h1>Your Tokens</h1>
             {address !== '-' && tokens && tokens.map(token => (
