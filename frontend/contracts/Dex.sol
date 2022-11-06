@@ -498,20 +498,16 @@ contract Orderbook {
             buyOrders[buyAddress].price = buyOrders[buyAddress].price - sellPrice;
 
             buyOrders[buyAddress].quantity = buyOrders[buyAddress].quantity - sellQuantity;
-            token1.transfer(sellAddress, buyOrders[buyAddress].price); // Unlock associated collateral and send it back to msg.sender
-            if (buyOrders[buyAddress].quantity == 0 || buyOrders[buyAddress].price == 0){
+            token1.transfer(sellAddress, sellPrice); // Unlock associated collateral and send it back to msg.sender
+            if (buyOrders[buyAddress].quantity == 0){
+                price = buyOrders[buyAddress].price;
                 address prev = _getPrevious(buyAddress); // Find the previous address of the msg.sender in the ordering mapping
                 nextBuy[prev] = nextBuy[buyAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
                 // Delete buy order from buy order mapping and ordering mapping
                 delete nextBuy[buyAddress];
                 delete buyOrders[buyAddress];
-                sellCount--; // Decrement the buy count
-                if(buyOrders[buyAddress].quantity == 0){
-                    token2.transfer(buyAddress, buyOrders[buyAddress].price);
-                }
-                else if (buyOrders[buyAddress].price == 0){
-                    token2.transfer(buyAddress, buyOrders[buyAddress].quantity);
-                }
+                buyCount--; // Decrement the buy count
+                    token1.transfer(buyAddress, price);
             }
         }
         
@@ -607,32 +603,26 @@ contract Orderbook {
             // Delete buy order from buy order mapping and ordering mapping
             delete nextSell[sellAddress];
             delete sellOrders[sellAddress];
-            sellCount--; // Decrement the buy count
+            sellCount--; // Decrement the sell count
             token2.transfer(buyAddress, quantity); // Unlock associated collateral and send it back to msg.sender
-            // emit CancelSellOrder(sellAddress); // Emit a cancel buy order event
         }
         else if (k==2){
             // sell Order partially fulfilled
             sellOrders[sellAddress].quantity = sellOrders[sellAddress].quantity - buyQuantity;
             sellOrders[sellAddress].price = sellOrders[sellAddress].price - buyPrice;
-            token2.transfer(buyAddress, sellOrders[sellAddress].quantity);
+            token2.transfer(buyAddress, buyQuantity);
 
-            if (sellOrders[sellAddress].quantity == 0 || sellOrders[sellAddress].price == 0){
+            if (sellOrders[sellAddress].price == 0){
+                quantity = sellOrders[sellAddress].quantity;
                 address prev = _getPrevious(sellAddress); // Find the previous address of the msg.sender in the ordering mapping
                 nextSell[prev] = nextSell[sellAddress]; // Delete msg.sender from ordering mapping. Similar to linked list deletion
                 // Delete sell order from sell order mapping and ordering mapping
                 delete nextSell[sellAddress];
                 delete sellOrders[sellAddress];
                 sellCount--; // Decrement the sell count
-                if(sellOrders[sellAddress].quantity == 0){
-                    token2.transfer(sellAddress, sellOrders[sellAddress].price);
-                }
-                else if (sellOrders[sellAddress].price == 0){
-                    token2.transfer(sellAddress, sellOrders[sellAddress].quantity);
-                }
+                token2.transfer(sellAddress, quantity);                
             }
             
-            // emit CancelSellOrder(sellAddress);
             
         }
     }
