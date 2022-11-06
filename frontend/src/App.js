@@ -26,7 +26,7 @@ function App() {
   const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
   const [refreshOrders, setRefreshOrders] = useState(false) // just a state to make the page refresh orders
 
-  const admin = '0xdF87f39C522c54ba1281AAf7df25a2223031b9F1' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const admin = '0x5BCbE05ed04163F10Ed698B69c8E3AbD906Ed19f' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {

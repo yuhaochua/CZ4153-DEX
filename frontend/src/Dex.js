@@ -5,7 +5,7 @@ import Web3 from "web3";
 // importing a compiled contract artifact which contains function signature etc. to interact
 import artifact from "./truffleProj/build/contracts/Dex.json";
 
-export const DexContractAddress = "0xC77fEcfe81A4a38018433E8C33bCF542662031AD"; // PLEASE CHANGE IT TO YOURS
+export const DexContractAddress = "0x48836e916BAF6aC9b681B33d2f5f4D7E8b11947f"; // PLEASE CHANGE IT TO YOURS
 
 const web3 = new Web3(window.ethereum);
 // const web3 = new Web3(Web3.currentProvider || new Web3.providers.WebsocketProvider(ganacheWSS));
