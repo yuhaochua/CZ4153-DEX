@@ -26,15 +26,12 @@ const Orders= ({addr, orders, refreshHandler, refreshOrders}) => {
     }
 
     useEffect(() => {
-        console.log("inside ORders", orders)
         const filterOrders = () => {
             let buy_Orders // temp array to hold the buy orders
             let sell_Orders // temp array to hold the sell orders
-            console.log("filtering orders", orders)
             buy_Orders = []
             sell_Orders = []
             orders && orders.map(order => {
-                console.log("ordered By",order.orderedBy)
                 if(order.orderedBy === addr){
                     if(order.orderType === 'buy') {
                         buy_Orders.push({

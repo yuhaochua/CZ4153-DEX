@@ -26,7 +26,7 @@ function App() {
   const [refresh, setRefresh] = useState(false) // just a state to make the page refresh content
   const [refreshOrders, setRefreshOrders] = useState(false) // just a state to make the page refresh orders
 
-  const admin = '0x5BCbE05ed04163F10Ed698B69c8E3AbD906Ed19f' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
+  const admin = '0xe08055527cF1367bF10B9BeeF76cf92591e61366' // THIS IS THE WALLET ADDRESS OF ADMIN. CAN CHANGE ACCORDINGLY.
 
   // subsequently will connect to metamask
   const connectWallet = async () => {
@@ -34,7 +34,6 @@ function App() {
     
 
 
-    // console.log(account)
 
     if(typeof window.ethereum !== 'undefined') {
       const web3 = new Web3(window.ethereum)
@@ -58,7 +57,6 @@ function App() {
       
       var account = await web3.eth.getAccounts()
       var balance = await web3.eth.getBalance(account[0])
-      console.log(account)
       balance = web3.utils.fromWei(balance)
 
     }else{
@@ -82,9 +80,6 @@ function App() {
   }
 
   const handleSendToken = async(e) => {
-    console.log("receipient:",receipient)
-    console.log("amount:",amount)
-    console.log("token:", token)
     await sendToken(token, receipient, amount, address)
     setRefresh(!refresh)
   }
@@ -132,7 +127,6 @@ function App() {
 
     const fetchOrders = async () => {
       await retrieveOrders().then((result) => {
-        console.log("order results", result)
         setOrders(result)
         setRefreshOrders(!refreshOrders)
       })
@@ -143,12 +137,8 @@ function App() {
 
   useEffect(() => {
     const inter = setInterval(() => {
-      console.log("cancelling order...")
       orders.length > 0 && orders.map(async order => {
-        console.log("PLACED BY: ",order.orderedBy)
         if(order.isTimed && order.orderedBy === address){
-          console.log("timenow is ", Date.now())
-          console.log("ordered time is ", order.date)
           if(Date.now() - order.date >= 15000){
             // cancel the buy/sell order
             order.orderType === "buy" ? await cancelBuy(order.token1Addr, order.token2Addr,address) : await cancelSell(order.token1Addr, order.token2Addr,address)
