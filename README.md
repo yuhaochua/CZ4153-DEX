@@ -27,7 +27,7 @@ Minimal Viable Decentralized Exchange using order book
 4. you might need to update **lines 85-91** in *truffle-config.js* to suit your testnet settings
 5. run `truffle compile`, if there are any missing dependencies, need install them, for example `npm install @truffle/hdwallet-provider`
 6. run `truffle migrate --network goerli` (change goerli to your preferred testnet as required)
-7. check in alchemy(or your preferred platform) or etherscan to confirm that your contracts are deployed
+7. check in alchemy(or your preferred platform) under the explorer tab or etherscan to confirm that your contracts are deployed
 NOTE: to check on etherscan, you will have to copy the contract address from the terminal output and search on etherscan(choose the correct ether scan for your testnet)
 8. copy the Dex contract address from terminal output and paste into **line 8** of *frontend/src/Dex.js* 
 9. copy your goerli testnet wallet address(the one used to deploy the Dex contract) and paste it into *frontend/src/App.js* on **line 29**, replacing the existing admin wallet address.
