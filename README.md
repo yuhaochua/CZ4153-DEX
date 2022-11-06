@@ -20,10 +20,10 @@ Minimal Viable Decentralized Exchange using order book
 1. create new project on goerli testnet(or any other testnet) through alchemy(or your preferred platform)
 2. update(or create if you do not have one) `.env` file in frontend folder 
 ##### Example of what `.env` file should look like
-MNEMONIC = `YOUR SECRET WORDS`
-PROJECT_ID = `API KEY`
-3. in MetaMask, add a new network with the details(RPC URL, Chain ID) of your newly created project.
+`MNEMONIC = 'YOUR SECRET WORDS'`<br>
+`PROJECT_ID = 'API KEY'`
 
+3. in MetaMask, add a new network with the details(RPC URL, Chain ID) of your newly created project.
 4. you might need to update **lines 85-91** in *truffle-config.js* to suit your testnet settings
 5. run `truffle compile`, if there are any missing dependencies, need install them, for example `npm install @truffle/hdwallet-provider`
 6. run `truffle migrate --network goerli` (change goerli to your preferred testnet as required)
