@@ -1,5 +1,5 @@
 # CZ4153-DEX
-Minimal Viable Decentralized Exchange using order book
+Minimal Viable Decentralized Exchange using order book. Built on top of [Solidity Orderbook](https://github.com/deanamiel/solidity-orderbook).
 
 1. cd into frontend folder, run `npm install`
 
